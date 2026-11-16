@@ -1,0 +1,911 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * Contacts Redesign CSS
+ * HillDesk Congressional Scheduling Application
+ *
+ * Styles the Contacts / Organizations directory as an inbox-style list-detail
+ * layout. Builds on schedule-redesign.css (header bar, list-detail wrapper,
+ * detail panel) and inbox-redesign.css (flat divided "worklist" rows), adding
+ * directory-specific chrome: the People/Organizations toggle, contact rows with
+ * initials avatars, and the detail-panel record view.
+ */
+
+/* =========================================================================
+   Page Layout — full-height, offset for the left navigation
+   (mirrors body.inbox-page so the directory fills the viewport)
+   ========================================================================= */
+
+body.contacts-page {
+    overflow: hidden;
+    height: 100vh;
+}
+
+body.contacts-page .main-content {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--header-height, 0px));
+    overflow: hidden;
+    padding-top: 0;
+    margin-top: var(--header-height, 0px);
+    margin-left: var(--sidebar-width, 200px);
+    margin-right: 0;
+    width: calc(100% - var(--sidebar-width, 200px));
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+body.contacts-page .footer {
+    display: none;
+}
+
+body.contacts-page .content-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+}
+
+body.contacts-page.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed-width, 60px);
+    width: calc(100% - var(--sidebar-collapsed-width, 60px));
+}
+
+body.contacts-page .schedule-redesign-container.contacts-container {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.contacts-page .schedule-below-header::before {
+    width: 10px;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.0275), transparent);
+}
+
+body.contacts-page .schedule-main-area {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 60%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* The scrollable list area — rows span edge to edge like the inbox queue. */
+body.contacts-page .schedule-view-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    padding: 0;
+    padding-bottom: var(--spacing-xl, 32px);
+    /* Greyer fill (swapped with the blank detail panel's tone). */
+    background: color-mix(in srgb, var(--bg-secondary) 50%, var(--bg-primary));
+}
+
+body.contacts-page .schedule-view-container > * {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.contacts-list,
+.skeleton-contacts-list {
+    background: color-mix(in srgb, var(--bg-secondary) 50%, var(--bg-primary));
+    padding-top: var(--spacing-xs);
+    min-height: calc(75% - 16px);
+}
+
+/* These elements set an explicit display, so the [hidden] attribute (which the
+   JS toggles for filtering/sorting/tab-switching) must be forced to win. */
+.contact-card[hidden],
+.contacts-empty-state[hidden],
+.contacts-section-header[hidden],
+.schedule-header-select-option[hidden],
+.filter-checkbox-item[hidden] {
+    display: none !important;
+}
+
+/* =========================================================================
+   People / Organizations segmented toggle (header bar)
+   ========================================================================= */
+
+.contacts-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    background: var(--bg-secondary, #f1f5f9);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-full, 9999px);
+    flex-shrink: 0;
+}
+
+.contacts-tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 14px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-full, 9999px);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.contacts-tab:hover {
+    color: var(--text-primary);
+}
+
+.contacts-tab.active {
+    background: var(--bg-primary, #fff);
+    color: var(--accent-color);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Keyboard focus: accent selection border (matches the app's nav focus style),
+   inset so it sits cleanly inside the tight segmented-control padding. */
+.contacts-tab:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: -2px;
+}
+
+/* =========================================================================
+   Contact rows — flat divided list with an initials avatar
+   ========================================================================= */
+
+.contact-card {
+    gap: 12px;
+}
+
+/* Selected row carries the accent on its left bar (the inbox base widens it). */
+.contact-card.detail-active,
+.contact-card.detail-active:hover {
+    border-left-color: var(--accent-color);
+}
+
+.contact-avatar {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-color);
+    background: color-mix(in srgb, var(--accent-color) 12%, var(--bg-primary));
+    text-transform: uppercase;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.contact-avatar--org {
+    color: var(--text-secondary);
+    background: var(--bg-secondary, #f1f5f9);
+    border-radius: var(--radius-md, 8px);
+}
+
+/* Right-edge badges: an email count can sit alongside the events count. */
+.inbox-row-badge {
+    gap: 6px;
+}
+
+/* Count pill on the right edge of each row (linked-event count). */
+.contacts-count-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full, 9999px);
+    background: var(--bg-secondary, #f1f5f9);
+    color: var(--text-secondary, #475569);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.contacts-count-pill svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+/* "Recently viewed" header above the list in Recent mode. */
+.contacts-section-header {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-md) var(--spacing-xs) 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.contacts-section-label {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary, #9ca3af);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Empty / no-results state in the list column. */
+.contacts-empty-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 48px 24px;
+    color: var(--text-secondary, #64748b);
+    font-size: var(--font-size-sm);
+    min-height: 160px;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* =========================================================================
+   Detail panel — contact / organization record view
+   ========================================================================= */
+
+.detail-panel-header-actions .detail-panel-close {
+    text-decoration: none;
+}
+
+.cdp-link {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.cdp-link:hover {
+    text-decoration: underline;
+}
+
+/* Only the primary org/person carries the accent; the rest read as normal
+   secondary text (still a link, just not accent-coloured). */
+.cdp-link--muted {
+    color: var(--text-secondary);
+}
+
+/* Organization names under a contact's title (non-interactive text). */
+.cdp-org-name { color: var(--accent-color); }
+.cdp-org-name--muted { color: var(--text-secondary); }
+
+/* =========================================================================
+   Click-to-copy (name / email / phone) with a "Copied" flash tooltip
+   ========================================================================= */
+.cdp-copy {
+    position: relative;
+    cursor: pointer;
+}
+
+.cdp-copy:hover {
+    color: var(--accent-color);
+}
+
+.detail-panel-title.cdp-copy {
+    display: inline-block;
+    max-width: 100%;
+}
+
+.cdp-copy.cdp-copied::after {
+    content: 'Copied';
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 9px;
+    background: var(--text-primary, #1e293b);
+    color: var(--bg-primary, #ffffff);
+    border-radius: var(--radius-sm, 6px);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    z-index: 99999;
+    pointer-events: none;
+}
+
+.cdp-copy.cdp-copied::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 1px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--text-primary, #1e293b);
+    z-index: 99999;
+    pointer-events: none;
+}
+
+/* =========================================================================
+   Frozen email/phone header + one scroll area for everything below it.
+   ========================================================================= */
+.cdp-body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;          /* the inner .cdp-scroll does the scrolling */
+    padding: 0;
+    gap: 0;
+}
+
+/* Title-row in the panel header: record-type icon + name on one line. Only the
+   name header is frozen; email/phone now live in the scroll area below it. */
+.cdp-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    margin-bottom: 2px;
+}
+
+.cdp-title-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-tertiary, #9ca3af);
+}
+
+.cdp-title-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.cdp-title-row .detail-panel-title {
+    margin: 0;
+}
+
+/* Everything below the email/phone line scrolls together. */
+.cdp-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 16px;
+}
+
+.cdp-notes {
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+/* Divider between upcoming and past linked events. */
+.cdp-events-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 2px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary, #9ca3af);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.cdp-events-divider::before,
+.cdp-events-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color, #e5e7eb);
+}
+
+/* Leading type icon on each list row (org / person / event / email). */
+.cdp-item-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-tertiary, #9ca3af);
+}
+
+.cdp-item-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Rows carry an icon now — center everything vertically. */
+.cdp-list-item {
+    align-items: center;
+}
+
+/* Keyboard focus ring for the in-panel Tab cycle (Edit → list items). Matches
+   the app's detail-panel focus ring exactly (accent outline, 2px offset). The
+   #id scope outranks the shared `.detail-panel-btn:focus { outline:none }` and
+   the email item's `outline:none`, so every cycle target rings the same way. */
+#contacts-detail-panel .detail-panel-btn:focus-visible,
+#contacts-detail-panel .cdp-list-item:focus-visible,
+#contacts-detail-panel .overlap-item:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* Floating "Copied" tooltip — rendered at <body> with fixed positioning so it
+   never clips behind the header or a scroll container. */
+.cdp-float-tip {
+    position: fixed;
+    z-index: 2147483647;
+    padding: 4px 9px;
+    background: var(--text-primary, #1e293b);
+    color: var(--bg-primary, #ffffff);
+    border-radius: var(--radius-sm, 6px);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.14s ease;
+}
+
+.cdp-float-tip.visible {
+    opacity: 1;
+}
+
+/* Org / people rows open the record's edit popup — make them read as clickable. */
+.cdp-record-item {
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.cdp-record-item:hover {
+    background: var(--bg-primary, #ffffff);
+}
+
+/* No text selection anywhere in the side panel — use click-to-copy instead. */
+#contacts-detail-panel {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.cdp-list-title--primary {
+    color: var(--accent-color);
+}
+
+a.cdp-list-title--primary:hover {
+    color: var(--accent-hover, var(--accent-color));
+}
+
+.cdp-contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.cdp-section {
+    min-width: 0;
+}
+
+.cdp-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary, #9ca3af);
+    margin-bottom: 8px;
+}
+
+.cdp-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: var(--radius-full, 9999px);
+    background: var(--bg-secondary, #f1f5f9);
+    color: var(--text-secondary, #475569);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.cdp-value {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+/* Related-email rows are clickable (open the email popup). */
+.cdp-email-item {
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.cdp-email-item:hover,
+.cdp-email-item:focus-visible {
+    background: var(--bg-primary, #ffffff);
+    outline: none;
+}
+
+/* Related-email popup — a single thread, styled like the EEM email pane. */
+.cdp-email-overlay {
+    position: fixed;
+    inset: 0;
+    /* Below the Event Editing Modal (z 9999) so opening an event from the popup
+       layers the EEM on top while the popup stays open underneath. */
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.45);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+}
+
+.cdp-email-overlay[hidden] {
+    display: none;
+}
+
+.cdp-email-modal {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(640px, 100%);
+    max-height: 80vh;
+    background: var(--v2-bg-primary, #ffffff);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.cdp-email-modal-body {
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.cdp-email-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-md, 8px);
+    /* White fill (no border) so it sits cleanly over the first email's outline
+       instead of overlapping the border line. */
+    background: var(--v2-bg-primary, #ffffff);
+    color: var(--text-secondary, #6b7280);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cdp-email-close:hover {
+    background: var(--bg-secondary, #f1f5f9);
+    color: var(--text-primary, #1f2937);
+}
+
+/* Thread count badge on a related-email row. */
+.cdp-thread-badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 7px;
+    border-radius: var(--radius-full, 9999px);
+    background: color-mix(in srgb, var(--accent-color) 12%, var(--bg-primary));
+    color: var(--accent-color);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.cdp-thread-badge svg {
+    opacity: 0.8;
+}
+
+/* "Thread · N messages" label at the top of a multi-message popup. */
+.cdp-email-thread-label {
+    margin-bottom: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--v2-text-tertiary, #9ca3af);
+}
+
+/* Related-events dropdown inside the popup. */
+.cdp-relevents {
+    position: relative;
+    display: inline-flex;
+}
+
+.cdp-relevents-btn {
+    width: auto;
+    gap: 3px;
+    padding: 0 6px;
+}
+
+.cdp-relevents-count {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.cdp-relevents-menu {
+    /* Opens on hover of the wrapper (button or menu); no click needed. */
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 5;
+    min-width: 230px;
+    max-width: 320px;
+    padding: 4px;
+    background: var(--v2-bg-primary, #ffffff);
+    border: 1px solid var(--v2-border-color, #e2e8f0);
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+}
+
+.cdp-relevents:hover .cdp-relevents-menu {
+    display: block;
+}
+
+/* Invisible bridge over the gap so moving the cursor from the button down to
+   the menu keeps the wrapper hovered (the menu doesn't flicker shut). */
+.cdp-relevents-menu::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 8px;
+}
+
+.cdp-relevents-heading {
+    padding: 6px 8px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary, #9ca3af);
+}
+
+.cdp-relevents-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 8px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    font-family: inherit;
+    font-size: var(--font-size-sm, 13px);
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.cdp-relevents-item:hover {
+    background: var(--bg-secondary, #f1f5f9);
+}
+
+.cdp-relevents-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Linked-events box keeps the events-page look: grey fill, white hover pill. */
+
+/* In-app tooltip naming the event status — shown when hovering anywhere on the
+   linked-event row (dark pill, same look as the app's other hover tooltips). */
+.cdp-status-tip {
+    position: relative;
+}
+
+.cdp-status-tip[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 9px;
+    background: var(--text-primary, #1e293b);
+    color: var(--bg-primary, #ffffff);
+    border-radius: var(--radius-sm, 6px);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    z-index: 99999;
+    pointer-events: none;
+}
+
+.cdp-status-tip[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--text-primary, #1e293b);
+    z-index: 99999;
+    pointer-events: none;
+}
+
+/* Blank detail panel takes the lighter tone (swapped with the scroll area). */
+#contacts-detail-panel-content .detail-panel-empty {
+    background: color-mix(in srgb, var(--bg-primary) 70%, var(--bg-secondary));
+}
+
+/* =========================================================================
+   Skeleton loaders — reuse the app's base .skeleton shimmer, shaped to match
+   the contact rows, the detail panel, and the email popup.
+   ========================================================================= */
+
+/* List skeleton — shown until the JS hydrates/sorts the real rows. */
+#contacts-skeleton { display: none; }
+#contacts-view-container.is-loading #contacts-list,
+#contacts-view-container.is-loading #contacts-empty { display: none; }
+#contacts-view-container.is-loading #contacts-skeleton { display: flex; flex-direction: column; }
+
+.skeleton-contact-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    /* Match the real .contact-card band + divider + left accent. */
+    background: color-mix(in srgb, var(--bg-primary) 70%, var(--bg-secondary));
+    border-bottom: 1px solid var(--border-color);
+    border-left: 3px solid var(--border-color);
+    padding: 8px var(--spacing-md) 8px 12px;
+}
+
+.skeleton-contact-card .sk-avatar { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; }
+.skeleton-contact-card .sk-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.skeleton-contact-card .sk-title { height: 14px; width: 55%; border-radius: var(--radius-sm, 4px); }
+.skeleton-contact-card .sk-meta { height: 11px; width: 38%; border-radius: var(--radius-sm, 4px); }
+.skeleton-contact-card .sk-badges { display: flex; gap: 6px; flex-shrink: 0; }
+.skeleton-contact-card .sk-pill { height: 20px; width: 44px; border-radius: var(--radius-full, 9999px); }
+
+/* Vary so the placeholder doesn't look mechanical. */
+.skeleton-contact-card:nth-child(2n) .sk-title { width: 66%; }
+.skeleton-contact-card:nth-child(2n) .sk-meta { width: 30%; }
+.skeleton-contact-card:nth-child(3n) .sk-title { width: 48%; }
+.skeleton-contact-card:nth-child(3n) .sk-meta { width: 44%; }
+.skeleton-contact-card:nth-child(3n) .sk-badges .sk-pill:first-child { display: none; }
+
+/* Detail-panel skeleton — reuses .detail-panel-skeleton header/close shapes. */
+.cdp-skeleton .skeleton-dp-subtitle { height: 13px; width: 42%; border-radius: var(--radius-sm, 4px); }
+.cdp-skeleton .cdp-sk-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.cdp-skeleton .cdp-sk-col { display: flex; flex-direction: column; gap: 8px; }
+.cdp-skeleton .cdp-sk-section { display: flex; flex-direction: column; gap: 8px; padding-top: 20px; }
+.cdp-skeleton .sk-label { height: 11px; width: 84px; border-radius: var(--radius-sm, 4px); }
+.cdp-skeleton .sk-line { height: 14px; width: 80%; border-radius: var(--radius-sm, 4px); }
+
+.cdp-skeleton .cdp-sk-box {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-md, 8px);
+    overflow: hidden;
+}
+
+.cdp-skeleton .cdp-sk-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--border-color, #f1f5f9);
+}
+
+.cdp-skeleton .cdp-sk-row:last-child { border-bottom: none; }
+.cdp-skeleton .sk-row-title { height: 13px; width: 55%; border-radius: var(--radius-sm, 4px); }
+.cdp-skeleton .sk-row-meta { height: 11px; width: 22%; border-radius: var(--radius-sm, 4px); }
+.cdp-skeleton .cdp-sk-row:nth-child(2n) .sk-row-title { width: 44%; }
+.cdp-skeleton .cdp-sk-row:nth-child(3n) .sk-row-title { width: 62%; }
+
+/* Email-popup skeleton — sits inside a real .v2-email-item shell. */
+.cdp-email-skeleton .v2-email-header { display: flex; align-items: center; justify-content: space-between; }
+.cdp-email-skeleton .sk-from { height: 14px; width: 150px; border-radius: var(--radius-sm, 4px); }
+.cdp-email-skeleton .sk-date { height: 12px; width: 96px; border-radius: var(--radius-sm, 4px); }
+.cdp-email-skeleton .sk-subject { height: 15px; width: 60%; border-radius: var(--radius-sm, 4px); margin: 10px 0 14px; }
+.cdp-email-skeleton .sk-body { display: flex; flex-direction: column; gap: 9px; }
+.cdp-email-skeleton .sk-body .skeleton { height: 12px; border-radius: var(--radius-sm, 4px); }
+.cdp-email-skeleton .sk-body .skeleton:nth-child(1) { width: 97%; }
+.cdp-email-skeleton .sk-body .skeleton:nth-child(2) { width: 92%; }
+.cdp-email-skeleton .sk-body .skeleton:nth-child(3) { width: 95%; }
+.cdp-email-skeleton .sk-body .skeleton:nth-child(4) { width: 78%; }
+.cdp-email-skeleton .sk-body .skeleton:nth-child(5) { width: 40%; }
+
+.cdp-notes {
+    white-space: pre-wrap;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.cdp-empty {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary, #9ca3af);
+}
+
+/* Grey box with rounded inset rows — matches the linked-events / inbox email
+   preview look. Rows separate by a small gap (no dividers) and highlight as a
+   contained white pill on hover. */
+.cdp-list {
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    background: var(--bg-secondary, #f8fafc);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-md, 8px);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cdp-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm, 6px);
+}
+
+.cdp-list-title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+a.cdp-list-title:hover {
+    color: var(--accent-color);
+}
+
+.cdp-list-meta {
+    flex-shrink: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary, #9ca3af);
+    white-space: nowrap;
+}
+
+/* =========================================================================
+   Responsive — keep the directory usable on narrow widths
+   ========================================================================= */
+
+@media (max-width: 768px) {
+    body.contacts-page .main-content,
+    body.contacts-page.sidebar-collapsed .main-content {
+        margin-left: var(--sidebar-collapsed-width, 60px);
+        width: calc(100% - var(--sidebar-collapsed-width, 60px));
+    }
+
+    .contacts-tabs {
+        order: 3;
+    }
+}

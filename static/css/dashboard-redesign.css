@@ -1,0 +1,1518 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * Dashboard Redesign CSS
+ * HillDesk Congressional Scheduling Application
+ *
+ * Two-column viewport-locked layout:
+ * Left: stat cards + inbox + floor schedule
+ * Right: tabbed agenda (Office / My Agenda)
+ */
+
+/* =========================================================================
+   Dashboard Page Layout - Full Height Window Fit
+   ========================================================================= */
+
+body.dashboard-page {
+    overflow: hidden;
+    height: 100vh;
+}
+
+body.dashboard-page .main-content {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--header-height, 0px));
+    overflow: hidden;
+    padding-top: 0;
+    margin-top: var(--header-height, 0px);
+    margin-left: var(--sidebar-width, 200px);
+    margin-right: 0;
+    width: calc(100% - var(--sidebar-width, 200px));
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+body.dashboard-page .footer {
+    display: none;
+}
+
+body.dashboard-page .content-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+}
+
+body.dashboard-page.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed-width, 60px);
+    width: calc(100% - var(--sidebar-collapsed-width, 60px));
+}
+
+/* =========================================================================
+   Dashboard Container — flex column, fills viewport
+   ========================================================================= */
+
+.dashboard-redesign {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    position: relative;
+}
+
+/* =========================================================================
+   Dashboard Header — z-40 with shadow, matching other pages
+   ========================================================================= */
+
+.dashboard-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) var(--spacing-lg);
+    padding-top: calc(var(--spacing-md) + 16px);
+    background: var(--bg-primary);
+    border-bottom: none;
+    min-height: 60px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    position: relative;
+    z-index: 40;
+}
+
+/* Spandrel — inverse border-radius at bottom-left, z-50 */
+.dashboard-header-bar::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    background: radial-gradient(circle at 100% 100%, transparent 12px, var(--bg-primary, #ffffff) 12px);
+    filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.06));
+    pointer-events: none;
+    z-index: 50;
+}
+
+.dashboard-header-titlewrap {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    min-width: 0;
+}
+
+.dashboard-page-title {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.dashboard-page-sep {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    -webkit-user-select: none;
+    user-select: none;
+    position: relative;
+    top: -1px;
+}
+
+a.dashboard-page-date,
+a.dashboard-page-date:link,
+a.dashboard-page-date:visited,
+a.dashboard-page-date:active {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--text-tertiary) !important;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-user-select: none;
+    user-select: none;
+    display: inline-flex;
+    align-items: baseline;
+    position: relative;
+    top: -1px;
+}
+
+a.dashboard-page-date:hover {
+    color: var(--text-tertiary) !important;
+    text-decoration: underline;
+}
+
+/* =========================================================================
+   Dashboard Header Action Buttons
+   ========================================================================= */
+
+.dashboard-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+/* Segmented Agenda | Review Tracker control (temporary view switch), pinned to
+   the far right of the header after the icon buttons. */
+.dashboard-view-toggle {
+    display: inline-flex;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 2px;
+    flex-shrink: 0;
+    margin-left: var(--spacing-sm);
+}
+
+.dash-view-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-tertiary);
+    padding: 5px 12px;
+    border-radius: calc(var(--radius-md) - 2px);
+    transition: background 0.15s, color 0.15s;
+}
+
+.dash-view-btn:hover {
+    color: var(--text-primary);
+}
+
+.dash-view-btn.active {
+    background: var(--bg-primary);
+    color: var(--accent-color);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.dashboard-header-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-md);
+    color: #6b7280;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+}
+
+.dashboard-header-btn:hover {
+    background: var(--bg-secondary);
+    color: #374151;
+}
+
+.dashboard-header-btn-create {
+    color: var(--accent-color);
+}
+
+.dashboard-header-btn-create:hover {
+    color: var(--accent-color);
+    opacity: 0.85;
+}
+
+.dashboard-header-btn[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.dashboard-header-btn[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: var(--text-primary);
+    z-index: 100;
+    pointer-events: none;
+}
+
+/* =========================================================================
+   Dashboard Content — two-column layout, fills remaining height
+   ========================================================================= */
+
+.dashboard-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+    padding: var(--spacing-md);
+    gap: var(--spacing-md);
+    position: relative;
+}
+
+/* Left-edge shadow — sits under the header (z-40) and spandrel (z-50) */
+.dashboard-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 6px;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.03), transparent);
+    z-index: 30;
+    pointer-events: none;
+}
+
+/* =========================================================================
+   Columns
+   ========================================================================= */
+
+.dashboard-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: var(--spacing-md);
+}
+
+.dashboard-col-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.dashboard-col-right {
+    width: 380px;
+    flex-shrink: 0;
+}
+
+/* =========================================================================
+   Stat Cards Row
+   ========================================================================= */
+
+.dashboard-stat-row {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-shrink: 0;
+}
+
+
+.dashboard-stat-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    min-height: 72px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dashboard-stat-card:hover {
+    border-color: var(--accent-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.stat-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon-approval,
+.stat-icon-review,
+.stat-icon-assigned,
+.stat-icon-week {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
+/* New Extractions: enlarge the sparkles so they fill more of the icon tile */
+.stat-icon-review svg {
+    width: 26px;
+    height: 26px;
+}
+
+.stat-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stat-card-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.stat-card-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* =========================================================================
+   Section Card Pattern (shared)
+   ========================================================================= */
+
+.dashboard-section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.section-title {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.section-title-icon {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.section-link {
+    font-size: var(--font-size-sm);
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+}
+
+.section-link:hover {
+    opacity: 0.8;
+}
+
+.section-body {
+    padding: var(--spacing-sm);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.section-empty {
+    padding: var(--spacing-lg);
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+}
+
+.section-empty svg {
+    flex-shrink: 0;
+    opacity: 0.5;
+}
+
+/* =========================================================================
+   Inbox Section — fills available space in left column
+   ========================================================================= */
+
+.dashboard-inbox-section {
+    flex: 1;
+    min-height: 0;
+}
+
+
+/* =========================================================================
+   Agenda Tabs — underline-style tab bar
+   ========================================================================= */
+
+/* Title (calendar icon + "Agenda") on the left, tabs on the right — mirrors
+   the House Floor header. (Inherits justify-content: space-between from
+   .section-header.) */
+
+.agenda-tabs {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.agenda-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    /* Vertical metrics match .floor-tab so the Agenda header is the same
+       height as the House Floor header (the two tabbed boxes sit side by side). */
+    padding: 2px var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.agenda-tab:hover {
+    color: var(--text-primary);
+}
+
+.agenda-tab.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+}
+
+.agenda-tab-panel {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.agenda-tab-panel.active {
+    display: flex;
+}
+
+.inbox-preview-count {
+    background: var(--accent-color);
+    color: white;
+    border-radius: var(--radius-full, 9999px);
+    padding: 1px 8px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+}
+
+.inbox-preview-body {
+    padding: var(--spacing-xs);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.inbox-preview-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+}
+
+.inbox-preview-card:hover {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+.inbox-preview-card.human-review {
+}
+
+.inbox-preview-card.pending-approval {
+}
+
+.inbox-preview-card-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.inbox-preview-card-title {
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: 1.3;
+    margin-bottom: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.inbox-preview-card-title em {
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.inbox-preview-prefix {
+    font-weight: 700;
+}
+
+.inbox-preview-card-meta {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.inbox-preview-received {
+    color: var(--text-tertiary);
+}
+
+.inbox-preview-card-right {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.inbox-preview-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--font-size-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-full, 9999px);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Icons inside inbox badges (stars for review, person for routed). */
+.inbox-badge-icon {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+/* Slightly larger stars in the review badge. */
+.inbox-preview-badge.extraction .inbox-badge-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.inbox-preview-badge.extraction {
+    color: #92400e;
+    background: rgba(234, 179, 8, 0.15);
+    /* Yellow glow — the "needs human review" attention cue. */
+    box-shadow: 0 0 7px 0 rgba(234, 179, 8, 0.65);
+}
+
+/* Emails set aside for a decision: same red as the inbox decision cards. */
+.inbox-preview-badge.decision {
+    color: var(--error-text, #991b1b);
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.inbox-preview-badge.approval {
+    color: var(--accent-color);
+    background: var(--accent-color-light);
+}
+
+.inbox-preview-card-hidden {
+    display: none;
+}
+
+.inbox-preview-load-more {
+    align-self: center;
+    margin-top: var(--spacing-xs);
+    /* Half a button height of breathing room below the button (button ≈ 28px). */
+    margin-bottom: 14px;
+    padding: 4px 14px;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full, 9999px);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.inbox-preview-load-more:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-color: var(--accent-color, #6366f1);
+}
+
+/* =========================================================================
+   Floor Schedule Section — fills remaining space in left column
+   ========================================================================= */
+
+.dashboard-floor-section {
+    flex: 1;
+    min-height: 140px;
+    position: relative;
+}
+
+.floor-schedule-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+}
+
+.floor-schedule-body:has(.section-empty) {
+    align-items: center;
+    justify-content: center;
+}
+
+.floor-schedule-week {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-left: var(--spacing-xs);
+}
+
+.floor-category {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.floor-category-name {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    padding: 0 var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+}
+
+.floor-category-items {
+    display: flex;
+    flex-direction: column;
+}
+
+.floor-item-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    padding: 4px var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    transition: background 0.15s;
+}
+
+.floor-item-row:hover {
+    background: var(--bg-secondary);
+}
+
+.floor-item-num {
+    flex-shrink: 0;
+    width: 72px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.floor-item-text {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.floor-item-text a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.floor-item-text a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+.gavel-icon {
+    transform: scaleX(-1);
+}
+
+.floor-header-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.floor-source-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-sm);
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.floor-source-link:hover {
+    background: var(--bg-secondary);
+    opacity: 0.85;
+}
+
+.floor-source-link[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -28px;
+    right: 0;
+    padding: 4px 10px;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+}
+
+/* =========================================================================
+   Inbox + House Floor — side-by-side row in the left column
+   ========================================================================= */
+
+.dashboard-left-row {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-md);
+}
+
+/* Each box shares the row equally and may shrink (min-width:0 lets the long
+   floor text ellipsize instead of forcing the row wider). */
+.dashboard-left-row > .dashboard-section {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* =========================================================================
+   View wrappers (Agenda <-> Review Tracker swap)
+   ========================================================================= */
+
+/* The toggle swaps these siblings inside .dashboard-col-left. The wrapper
+   adds one flex level over the original .dashboard-left-row, so it must fill
+   the column the same way the row used to. */
+.dashboard-view {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.dashboard-view[hidden] {
+    display: none;
+}
+
+.dashboard-view > .dashboard-left-row,
+.dashboard-view > .dashboard-section {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* =========================================================================
+   Review Tracker (office-wide open approval-routing paths)
+   ========================================================================= */
+
+.review-tracker-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.review-tracker-body {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* Tracker entries read as list items separated by divider lines, not cards. */
+.review-tracker-card {
+    padding: var(--spacing-md) 2px;
+    border-bottom: 2px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.review-tracker-card:last-child {
+    border-bottom: none;
+}
+
+.review-tracker-card:hover {
+    background: var(--bg-secondary);
+}
+
+/* Title and meta are centered, stacked (meta below the title). */
+.rt-card-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 2px;
+}
+
+.rt-card-title {
+    max-width: 100%;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.25;
+}
+
+.rt-card-meta {
+    max-width: 100%;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Approval progress as a horizontal stepper. Stages sit on a grid of equal
+   columns (set inline to the office-wide max stage count) so they line up
+   vertically across every row. Stages are joined by thin plain connector
+   lines — no arrowheads, and no trailing line after the final stage. State is
+   carried by the marker SHAPE (check / dot-in-ring / hollow ring / cross), not
+   color alone, for colorblind accessibility. Only the current stage is
+   labelled ("Pending: <name>"); other stages show their name on hover. */
+.rt-stepper {
+    display: grid;
+    align-items: start;
+    /* Each step column is capped at 25% of the width (the 4-node cell size), and
+       the group is centered — so 2-3 nodes stay tight instead of spreading out,
+       while 4 fill the row and 5+ shrink to fit. */
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.rt-step {
+    position: relative;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.rt-step[data-note] {
+    cursor: help;
+}
+
+/* Thin plain connector back to the previous marker. Absent on the first step,
+   so the final stage has no forward line/notch. */
+.rt-step.has-line::before {
+    content: '';
+    position: absolute;
+    top: 9px;
+    right: 50%;
+    width: 100%;
+    height: 2px;
+    background: var(--border-color);
+    transform: translateY(-50%);
+    z-index: 0;
+}
+
+.rt-step-marker {
+    position: relative;
+    z-index: 1;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    /* opaque disc so the connector line is hidden behind the marker (and not
+       seen through hollow markers) */
+    background: var(--bg-primary);
+}
+
+.rt-step-marker svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+}
+
+/* Approver name shown under every marker. The current step's name is the only
+   bold one and is slightly larger to mark where the event sits. */
+.rt-step-name {
+    max-width: 100%;
+    margin-top: 6px;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.2;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rt-step-name.is-current {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* =========================================================================
+   House Floor Tabs (Live Updates / This Week's Schedule)
+   ========================================================================= */
+
+/* Tabs live on the right side of the floor section header, title on the left. */
+.floor-tabs {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-shrink: 0;
+}
+
+.floor-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 2px 4px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.floor-tab:hover {
+    color: var(--text-primary);
+}
+
+.floor-tab.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+}
+
+.floor-tab-panel {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.floor-tab-panel.active {
+    display: flex;
+}
+
+/* Per-panel meta strip: legislative day / week + last-updated + source link. */
+.floor-panel-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 6px var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
+.floor-activity-day {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Push the external-source link to the far right of the meta strip. */
+.floor-panel-meta .floor-source-link {
+    margin-left: auto;
+}
+
+/* Pulsing green dot — shown while the House is still in session. */
+.floor-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+    animation: floorLivePulse 1.8s ease-out infinite;
+}
+
+@keyframes floorLivePulse {
+    0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+    70%  { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+/* =========================================================================
+   Live Floor Activity feed
+   ========================================================================= */
+
+.floor-activity-body {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+.floor-activity-row {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: baseline;
+    padding: 7px var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.floor-activity-row:last-child {
+    border-bottom: none;
+}
+
+.floor-activity-time {
+    flex-shrink: 0;
+    width: 84px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--accent-color);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.floor-activity-desc {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* =========================================================================
+   Live Stream embed
+   ========================================================================= */
+
+.floor-stream-wrap {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    background: #000;
+}
+
+.floor-stream-frame {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+/* Shown when the House isn't in session (no live video to embed). */
+.floor-stream-offline {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: var(--spacing-lg);
+    text-align: center;
+    color: var(--text-tertiary);
+}
+
+.floor-stream-offline svg {
+    color: var(--text-tertiary);
+    opacity: 0.6;
+    margin-bottom: 2px;
+}
+
+.floor-stream-offline-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.floor-stream-offline-sub {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.floor-stream-offline-links {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+}
+
+.floor-stream-offline-links a {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.floor-stream-offline-links a:hover {
+    text-decoration: underline;
+}
+
+/* =========================================================================
+   Disable selection on dashboard chrome (labels, titles, badges, tab buttons,
+   meta strips). Actual content — inbox titles, agenda items, floor-schedule
+   bill numbers and descriptions — remains selectable.
+   ========================================================================= */
+.dashboard-page-title,
+.dashboard-header-btn,
+.dashboard-stat-card,
+.section-title,
+.section-link,
+.section-empty,
+.inbox-preview-count,
+.inbox-preview-badge,
+.agenda-tab,
+.floor-tab,
+.floor-activity-day,
+.day-event-badge,
+.floor-schedule-week,
+.floor-updated,
+.floor-source-link,
+.floor-category-name {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.floor-updated {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+
+/* =========================================================================
+   Agenda Sections — each takes half of right column
+   ========================================================================= */
+
+.dashboard-agenda-section {
+    flex: 1;
+    min-height: 0;
+}
+
+.agenda-event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.agenda-event-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-md);
+    transition: background 0.15s;
+}
+
+.agenda-event-row:hover {
+    background: var(--bg-secondary);
+}
+
+/* Visible focus ring for the dashboard's explicit Tab order. */
+.agenda-tab:focus-visible,
+.floor-tab:focus-visible,
+.dashboard-stat-card:focus-visible,
+.dashboard-inbox-section .section-link:focus-visible,
+.dashboard-header-btn:focus-visible,
+.dash-view-btn:focus-visible {
+    outline: 2px solid var(--accent-color, #2563eb);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
+}
+
+/* Keyboard selection (Up/Down) on the dashboard agenda rows / tracker / inbox
+   cards. Outline only — the item's background is left unchanged. */
+.agenda-event-row.dash-kbd-selected,
+.review-tracker-card.dash-kbd-selected,
+.inbox-preview-card.dash-kbd-selected {
+    box-shadow: inset 0 0 0 2px var(--accent-color, #2563eb);
+    border-radius: var(--radius-md);
+}
+
+/* House Floor pane: the whole box is selected (outline only, no fill change).
+   Drawn as an overlay above the content so the inner scrollbar and the row
+   dividers don't cut through it. */
+.dashboard-floor-section.dash-kbd-box-selected::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--accent-color, #2563eb);
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.agenda-event-time-col {
+    width: 80px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.agenda-event-time {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.agenda-event-endtime {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary, #94a3b8);
+    font-weight: 400;
+    line-height: 1.2;
+}
+
+.agenda-event-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-size-xs);
+    line-height: 1.2;
+    min-width: 0;
+}
+
+.agenda-event-status {
+    font-weight: 500;
+    /* color is set inline from event.get_status_color (the dark/primary
+       status color from office customization) */
+}
+
+.agenda-event-meta-dot {
+    color: var(--text-tertiary, #94a3b8);
+}
+
+/* Day divider: a thin line spanning the row with a centered date label
+   ("Today", "Tomorrow", or formatted date) sitting on top of it. */
+.agenda-day-divider {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 12px;
+    pointer-events: none;
+}
+
+.agenda-day-divider::before,
+.agenda-day-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #cbd5e1;
+}
+
+.agenda-day-divider-label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+/* Hover tooltip — mirrors .calendar-tooltip used on the calendar page */
+.agenda-tooltip {
+    position: fixed;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    max-width: 350px;
+    word-wrap: break-word;
+    z-index: 10001;
+    pointer-events: none;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.1s ease;
+}
+
+.agenda-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+.agenda-event-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.agenda-event-title {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+}
+
+.agenda-event-location {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.agenda-see-all {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--accent-color);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.agenda-see-all:hover {
+    background: var(--bg-secondary);
+}
+
+/* =========================================================================
+   Status Badge Styling — uses dynamic CSS variables from base.html
+   ========================================================================= */
+
+.day-event-badge {
+    font-size: var(--font-size-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-full, 9999px);
+    font-weight: 500;
+    flex-shrink: 0;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+.status-badge-received    { background: var(--status-received-bg, #f3f4f6);    color: var(--status-received, #6b7280); }
+.status-badge-scheduled   { background: var(--status-scheduled-bg, #dcfce7);   color: var(--status-scheduled, #16a34a); }
+.status-badge-hold        { background: var(--status-hold-bg, #fef3c7);        color: var(--status-hold, #d97706); }
+.status-badge-canceled    { background: var(--status-canceled-bg, #fee2e2);    color: var(--status-canceled, #dc2626); }
+.status-badge-tentative   { background: var(--status-tentative-bg, #e0e7ff);   color: var(--status-tentative, #4f46e5); }
+.status-badge-declined    { background: var(--status-declined-bg, #fecaca);    color: var(--status-declined, #b91c1c); }
+.status-badge-completed   { background: var(--status-completed-bg, #d1fae5);   color: var(--status-completed, #059669); }
+
+/* =========================================================================
+   Responsive Design
+   ========================================================================= */
+
+@media (max-width: 1024px) {
+    .dashboard-col-right {
+        width: 320px;
+    }
+}
+
+/* At narrow desktop widths the 3 stat cards get cramped next to the
+   agenda column — hide them and lean on the Inbox + Floor card. */
+@media (max-width: 1200px) {
+    .dashboard-stat-row {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Match schedule/settings header padding on small screens — they drop
+       the extra padding-top so the header doesn't have stray top space. */
+    .dashboard-header-bar {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .dashboard-content {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    /* Make the columns transparent so inner sections become direct children
+       of .dashboard-content. Lets us reorder Inbox -> Stats -> Agenda -> Floor
+       across the page-level flex column. */
+    .dashboard-col-left,
+    .dashboard-col-right,
+    .dashboard-view-agenda,
+    .dashboard-left-row {
+        display: contents;
+    }
+
+    /* Tracker (when toggled on) flows as a normal full-width section here. */
+    .dashboard-view-tracker {
+        display: flex;
+        order: 3;
+    }
+
+    .dashboard-inbox-section  { order: 1; }
+    .dashboard-stat-row       { order: 2; }
+    .dashboard-agenda-section { order: 3; }
+    .dashboard-floor-section  { order: 4; }
+
+    .dashboard-agenda-section {
+        max-height: 400px;
+        flex: none;
+    }
+
+    .dashboard-inbox-section {
+        max-height: 300px;
+        flex: none;
+    }
+
+    .dashboard-floor-section {
+        max-height: 200px;
+        flex: none;
+    }
+
+    .dashboard-stat-row {
+        flex-wrap: wrap;
+    }
+
+    .dashboard-stat-card {
+        min-width: calc(50% - var(--spacing-md));
+    }
+
+    body.dashboard-page .main-content,
+    body.dashboard-page.sidebar-collapsed .main-content {
+        margin-left: var(--sidebar-collapsed-width, 60px);
+        width: calc(100% - var(--sidebar-collapsed-width, 60px));
+    }
+
+    .inbox-preview-card-right {
+        display: none;
+    }
+}

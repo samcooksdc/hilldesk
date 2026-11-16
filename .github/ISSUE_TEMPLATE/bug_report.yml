@@ -1,0 +1,37 @@
+name: Bug report
+description: Something in HillDesk doesn't work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste real constituent, staff or office email, names or addresses.**
+        Reproduce with the demo office (`python manage.py bootstrap_demo`) if you can.
+        Security problems go through private reporting instead (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Run bootstrap_demo\n2. Open the inbox\n3. ..."
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+  - type: dropdown
+    id: env
+    attributes:
+      label: Environment
+      options: [Demo / development, Docker demo, Production deployment]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or tracebacks (redact anything real)
+      render: text

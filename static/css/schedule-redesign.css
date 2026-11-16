@@ -1,0 +1,3979 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * Schedule Redesign Stylesheet
+ * HillDesk Congressional Scheduling Application
+ *
+ * Provides styling for the redesigned schedule view with:
+ * - Two-panel layout (filter sidebar + event list)
+ * - Search and sort functionality
+ * - Card-based event listing with status colors
+ * - Inline status dropdown
+ */
+
+/* =============================================================================
+   Page Layout Overrides
+   ============================================================================= */
+/* Allow full width for schedule page - override components.css padding */
+body.schedule-page {
+    max-width: none;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Static UI text is not selectable */
+.schedule-page-title,
+.schedule-header-bar label,
+.schedule-header-select-label,
+.schedule-header-select-trigger,
+.v2-readonly-label,
+.v2-readonly-missing-toggle,
+.detail-panel-btn,
+.detail-panel-close,
+.detail-panel-empty-title,
+.detail-panel-empty-subtitle,
+.detail-panel-recent-title,
+.schedule-date-header,
+.schedule-section-header,
+.schedule-card-indicator,
+.sidebar-header,
+.detail-panel-more-btn {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Hide footer on schedule page */
+body.schedule-page .footer {
+    display: none;
+}
+
+/* Remove padding from content wrapper on schedule page */
+body.schedule-page .content-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    padding: 0;
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+/* Adjust main content for full-height schedule - no margins */
+body.schedule-page .main-content {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--header-height, 0px));
+    min-height: calc(100vh - var(--header-height, 0px));
+    padding-top: 0;
+    margin-top: var(--header-height, 0px);
+    margin-left: var(--sidebar-width, 200px);
+    margin-right: 0;
+    width: calc(100% - var(--sidebar-width, 200px));
+    transition: margin-left 0.3s ease, width 0.3s ease;
+    overflow: hidden;
+}
+
+/* Schedule responds to collapsed sidebar */
+body.schedule-page.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed-width, 60px);
+    width: calc(100% - var(--sidebar-collapsed-width, 60px));
+}
+
+/* Schedule container fills available space */
+body.schedule-page .schedule-redesign-container {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* =============================================================================
+   Main Layout Container
+   ============================================================================= */
+.schedule-redesign-container {
+    display: flex;
+    gap: 0;
+    background: var(--bg-secondary);
+    overflow: hidden;
+    flex: 1;
+    height: 100%;
+    width: 100%;
+}
+
+/* Content area: header on top, panels below */
+.schedule-content-area {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Below-header area: filter sidebar + list-detail wrapper in a row */
+.schedule-below-header {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Left-edge shadow — sits under the header (z-40) and spandrel (z-50) */
+.schedule-below-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 6px;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.03), transparent);
+    z-index: 30;
+    pointer-events: none;
+}
+
+/* List-Detail wrapper: main area + detail panel side by side */
+.schedule-list-detail-wrapper {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* =============================================================================
+   Filter Sidebar - Opens from Left (below header)
+   ============================================================================= */
+.schedule-filter-sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.3s ease, min-width 0.3s ease;
+    border-right: 1px solid var(--border-color);
+}
+
+.schedule-filter-sidebar.collapsed {
+    width: 0;
+    min-width: 0;
+    border-right: none;
+}
+
+/* =============================================================================
+   Schedule Main Area (Left Panel - content area)
+   ============================================================================= */
+.schedule-main-area {
+    flex: 1 1 60%;
+    min-width: 500px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    transition: flex-basis 0.3s ease;
+}
+
+/* =============================================================================
+   Schedule Header Bar
+   ============================================================================= */
+.schedule-header-bar {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    padding-top: calc(var(--spacing-md) + 16px);
+    background: var(--bg-primary);
+    border-bottom: none;
+    min-height: 60px;
+    gap: var(--spacing-md);
+    flex-wrap: nowrap;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    position: relative;
+    z-index: 40;
+    flex-shrink: 0;
+}
+
+/* Inverse border radius — concave quarter-circle at the inner corner
+   where the sidebar's right edge meets the header's bottom edge.
+   Creates the illusion that the content surface has a rounded top-left corner. */
+.schedule-header-bar::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    background: radial-gradient(circle at 100% 100%, transparent 12px, var(--bg-primary, #ffffff) 12px);
+    filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.06));
+    pointer-events: none;
+    z-index: 50;
+}
+
+/* Page Title */
+.schedule-page-title {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    flex-shrink: 0;
+}
+
+/* Tabs: All Events / Undated — segmented control next to the page title */
+.schedule-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.schedule-tab {
+    position: relative;
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: calc(var(--radius-md) - 2px);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.schedule-tab:hover {
+    color: var(--text-primary);
+}
+
+.schedule-tab.active {
+    background: var(--bg-primary);
+    color: var(--accent-color);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Keyboard-hint tooltip — mirrors the collapsed-sidebar nav tooltips
+   (dark pill + arrow + shadow), anchored above the tab, but built from real
+   elements so "Shift" and the arrow render as keycaps. */
+.schedule-tab-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    /* Hide immediately on leave; the show delay is applied on hover below. */
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    transition-delay: 0s;
+    z-index: 999999;
+    pointer-events: none;
+    box-shadow: var(--shadow-lg);
+}
+
+/* Tooltip arrow pointing down toward the tab */
+.schedule-tab-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--text-primary);
+}
+
+/* The contacts directory reuses this tooltip on its People/Organizations
+   tabs, so it needs the same positioning anchor. */
+.contacts-tab {
+    position: relative;
+}
+
+.schedule-tab:hover .schedule-tab-tooltip,
+.schedule-tab:focus-visible .schedule-tab-tooltip,
+.contacts-tab:hover .schedule-tab-tooltip,
+.contacts-tab:focus-visible .schedule-tab-tooltip {
+    opacity: 1;
+    visibility: visible;
+    /* Wait half a second of hover before revealing. */
+    transition-delay: 0.5s;
+}
+
+/* Keycaps inside the tooltip */
+.schedule-tab-tooltip .kbd-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 20px;
+    padding: 0 5px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-bottom-width: 2px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.schedule-tab-tooltip .kbd-arrow {
+    padding: 0 4px;
+}
+
+.schedule-tab-tooltip .kbd-arrow svg {
+    width: 13px;
+    height: 13px;
+    display: block;
+}
+
+.schedule-tab-tooltip .kbd-plus,
+.schedule-tab-tooltip .kbd-sep {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+/* Filters Toggle Button (shown when filter sidebar is collapsed) */
+.schedule-filters-toggle-btn {
+    display: none;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.schedule-filters-toggle-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.schedule-filters-toggle-btn .filters-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Show filters button when sidebar is collapsed */
+.schedule-filter-sidebar.collapsed ~ .schedule-list-detail-wrapper .schedule-filters-toggle-btn {
+    display: flex;
+}
+
+/* Filter button in header — icon only */
+.schedule-filter-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.schedule-filter-icon-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.schedule-filter-icon-btn:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.schedule-filter-icon-btn.has-filters {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    background: color-mix(in srgb, var(--accent-color) 8%, var(--bg-primary));
+    /* Accent-colored glow while any filter is active. */
+    box-shadow: 0 0 8px 1px color-mix(in srgb, var(--accent-color) 55%, transparent);
+}
+
+/* One-shot attention pulse when a page loads with a deep-linked filter already
+   applied (e.g. dashboard / Ctrl-K "Extractions" / "Routed to you"). The class
+   is removed by JS once the animation ends, leaving the steady has-filters glow. */
+.schedule-filter-icon-btn.filter-pulse {
+    animation: schedule-filter-pulse 0.8s ease-out 1;
+}
+
+@keyframes schedule-filter-pulse {
+    0% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-color) 60%, transparent);
+    }
+    70% {
+        box-shadow: 0 0 8px 6px color-mix(in srgb, var(--accent-color) 0%, transparent);
+    }
+    100% {
+        box-shadow: 0 0 8px 1px color-mix(in srgb, var(--accent-color) 55%, transparent);
+    }
+}
+
+/* =============================================================================
+   Search Container
+   ============================================================================= */
+.schedule-search-container {
+    flex: 1;
+    min-width: 150px;
+    position: relative;
+}
+
+/* Right-side header controls group */
+.schedule-header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex-shrink: 0;
+}
+
+.schedule-search-input {
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    padding-left: 36px;
+    padding-right: 36px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+    /* Placeholder ("Search inbox...") shouldn't be selectable via page Ctrl+A,
+       and typed text still selects via keyboard inside the field. */
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.schedule-search-input:focus {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.schedule-search-input:hover {
+    border-color: var(--accent-color);
+}
+
+.schedule-search-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.schedule-search-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+.schedule-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+
+.schedule-search-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background: var(--bg-secondary);
+    border: none;
+    border-radius: 50%;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.schedule-search-clear:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.schedule-search-clear.visible {
+    display: flex;
+}
+
+.schedule-search-clear svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* =============================================================================
+   Header Select (custom dropdown — Sort, Past Events)
+   ============================================================================= */
+.schedule-header-select {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.schedule-header-select-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+.schedule-header-select-trigger:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.schedule-header-select.open .schedule-header-select-trigger {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.schedule-header-select-label {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.schedule-header-select-arrow {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+    transition: transform 0.2s ease;
+}
+
+.schedule-header-select.open .schedule-header-select-arrow {
+    transform: rotate(180deg);
+}
+
+/* Dropdown menu */
+.schedule-header-select-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg, 0 4px 12px rgba(0, 0, 0, 0.1));
+    z-index: 200;
+    padding: 4px 0;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.schedule-header-select.open .schedule-header-select-menu {
+    display: block;
+}
+
+/* Options */
+.schedule-header-select-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    font-size: var(--font-size-sm);
+    font-family: inherit;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+    white-space: nowrap;
+}
+
+.schedule-header-select-option:hover {
+    background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+    color: var(--accent-color);
+}
+
+.schedule-header-select-option.selected {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.schedule-header-select-option.selected::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 10px;
+    border: solid var(--accent-color);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-right: 2px;
+    flex-shrink: 0;
+}
+
+/* =============================================================================
+   Show Past Events Checkbox
+   ============================================================================= */
+/* Results right group (print + filters) */
+.schedule-results-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.schedule-filters-toggle-btn-inline {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.schedule-filters-toggle-btn-inline:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* Filters button active state - glow when filters are active */
+.schedule-filters-toggle-btn-inline.has-filters {
+    background: color-mix(in srgb, var(--accent-color) 15%, var(--bg-primary));
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent-color) 40%, transparent);
+}
+
+.schedule-filters-toggle-btn-inline.has-filters:hover {
+    background: color-mix(in srgb, var(--accent-color) 25%, var(--bg-primary));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color) 50%, transparent);
+}
+
+.schedule-filters-toggle-btn-inline .filters-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Vertical separator */
+.schedule-separator {
+    width: 1px;
+    height: 24px;
+    background: var(--border-color);
+    flex-shrink: 0;
+}
+
+/* (Past Events and Sort dropdowns now use .schedule-header-select above) */
+
+
+/* =============================================================================
+   Results Header (above event list)
+   ============================================================================= */
+/* Results header removed — event count and print button no longer shown */
+
+/* =============================================================================
+   Schedule View Container
+   ============================================================================= */
+.schedule-view-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--bg-secondary);
+    padding: var(--spacing-lg);
+    padding-top: var(--spacing-sm);
+    padding-left: max(var(--spacing-md), calc((100% - 1200px) / 2));
+    padding-right: max(var(--spacing-md), calc((100% - 1200px) / 2));
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* Constrain content width */
+.schedule-view-container > * {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#schedule-event-list {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    background: transparent;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    min-height: calc(75% - 16px);
+    margin-bottom: 16px;
+}
+
+/* =============================================================================
+   Cards Container
+   ============================================================================= */
+.schedule-cards-container {
+    display: flex;
+    flex-direction: column;
+    /* Cards join into a flat divided list — no gap between them */
+    gap: 0;
+}
+
+.schedule-cards-container.with-date-headers {
+    gap: 0;
+}
+
+/* =============================================================================
+   Date Headers (shown only in "Date (Soonest)" sort)
+   ============================================================================= */
+.schedule-date-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    padding: 2px var(--spacing-xs);
+    margin-top: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.schedule-date-header:first-child {
+    margin-top: 0;
+}
+
+.schedule-date-header .date-label {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.schedule-date-header .day-label {
+    font-size: var(--font-size-base);
+    font-weight: 400;
+    color: var(--text-tertiary, #9ca3af);
+}
+
+.schedule-date-header .today-badge {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--accent-color);
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.schedule-date-header.today {
+    border-bottom-color: var(--accent-color);
+}
+
+.schedule-date-header.today .date-label {
+    color: var(--accent-color);
+}
+
+.schedule-date-header.tomorrow {
+    border-bottom-color: var(--border-color);
+}
+
+.schedule-date-header.tomorrow .date-label {
+    color: var(--text-primary);
+}
+
+/* Section Headers (for "No Date Set", "Earlier", etc.) */
+.schedule-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-xs);
+    margin-top: var(--spacing-md);
+    margin-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.schedule-section-header .section-label {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* =============================================================================
+   Event Card - Two-line layout with status bar
+   ============================================================================= */
+.schedule-card {
+    display: flex;
+    background: var(--bg-primary, white);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Collapse the border between adjacent cards into a single 1px divider */
+.schedule-card + .schedule-card {
+    border-top: none;
+}
+
+/* First card of a group (or the list) — rounded top corners */
+.schedule-cards-container > .schedule-card:first-child,
+.schedule-date-header + .schedule-card,
+.schedule-section-header + .schedule-card {
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
+}
+
+/* Last card of a group (or the list) — rounded bottom corners */
+.schedule-cards-container > .schedule-card:last-child,
+.schedule-card:has(+ .schedule-date-header),
+.schedule-card:has(+ .schedule-section-header) {
+    border-bottom-left-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
+}
+
+.schedule-card:hover {
+    background: var(--bg-secondary, #f9fafb);
+}
+
+/* Left status color bar — corners follow the card's group rounding */
+.schedule-card-status-bar {
+    width: 4px;
+    flex-shrink: 0;
+    background: var(--text-tertiary);
+    border-radius: 0;
+    transition: width 0.15s ease;
+}
+
+.schedule-cards-container > .schedule-card:first-child .schedule-card-status-bar,
+.schedule-date-header + .schedule-card .schedule-card-status-bar,
+.schedule-section-header + .schedule-card .schedule-card-status-bar {
+    border-top-left-radius: var(--radius-lg);
+}
+
+.schedule-cards-container > .schedule-card:last-child .schedule-card-status-bar,
+.schedule-card:has(+ .schedule-date-header) .schedule-card-status-bar,
+.schedule-card:has(+ .schedule-section-header) .schedule-card-status-bar {
+    border-bottom-left-radius: var(--radius-lg);
+}
+
+/* Card body — left text lines + right controls side by side */
+.schedule-card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-md);
+}
+
+/* Left side: title and meta stacked tightly */
+.schedule-card-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.4;
+}
+
+/* Card title — bold, truncate, includes org */
+.schedule-card-title {
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Organization after title — lighter weight */
+.schedule-card-org {
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+/* Second-line metadata string — "Date · Time", truncates */
+.schedule-card-meta-line {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+/* Right column — icons above dropdown, stacked */
+.schedule-card-right-col {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+/* =============================================================================
+   Custom Status Dropdown
+   ============================================================================= */
+.schedule-custom-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+/* Dropdown trigger button - pill-shaped with status color background */
+.schedule-dropdown-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    border: 1px solid currentColor;
+    cursor: pointer;
+    background-color: rgba(107, 114, 128, 0.1);
+    transition: box-shadow 0.15s ease, opacity 0.15s ease;
+    white-space: nowrap;
+}
+
+.schedule-dropdown-trigger:hover {
+    opacity: 0.9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-dropdown-arrow {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.schedule-custom-dropdown.open .schedule-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+/* Dropdown menu - fixed position, set via JS */
+.schedule-dropdown-menu {
+    position: fixed;
+    display: none;
+    min-width: 150px;
+    background: white;
+    border: 1px solid #9ca3af;
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 99999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.schedule-custom-dropdown.open .schedule-dropdown-menu,
+.schedule-status-dropdown-wrapper.open .schedule-dropdown-menu {
+    display: block;
+}
+
+/* Remove focus outline from dropdown elements */
+.schedule-dropdown-trigger:focus,
+.schedule-dropdown-trigger:focus-visible,
+.schedule-dropdown-menu:focus,
+.schedule-dropdown-menu:focus-visible,
+.schedule-dropdown-option:focus,
+.schedule-dropdown-option:focus-visible,
+.schedule-status-dropdown-wrapper:focus,
+.schedule-status-dropdown-wrapper:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Dropdown options - gray by default, explicit styles to prevent inheritance */
+.schedule-dropdown-option {
+    padding: 5px 10px;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    outline: none;
+    /* Override global .status-* borders */
+    border: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    color: #6b7280 !important;
+    background: white !important;
+}
+
+/* Remove bottom border from last option */
+.schedule-dropdown-option:last-child {
+    border-bottom: none !important;
+}
+
+/* .kb-active is the keyboard-highlighted option; it mirrors :hover exactly so
+   arrow-key navigation looks identical to using the mouse. The highlighted row
+   is bolded (mouse or keyboard) so it's easy to see. */
+.schedule-dropdown-option:hover,
+.schedule-dropdown-option.kb-active {
+    background: #f9fafb !important;
+    font-weight: 700;
+}
+
+.schedule-dropdown-option.selected {
+    font-weight: 600;
+}
+
+.schedule-dropdown-option.inactive {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+/* Option status colors - on hover / keyboard highlight and selected */
+.schedule-dropdown-option.status-received:hover, .schedule-dropdown-option.status-received.kb-active, .schedule-dropdown-option.status-received.selected { color: var(--status-received, #2b5ea0) !important; background: var(--status-received-bg, rgba(43, 94, 160, 0.1)) !important; }
+.schedule-dropdown-option.status-hold:hover, .schedule-dropdown-option.status-hold.kb-active, .schedule-dropdown-option.status-hold.selected { color: var(--status-hold, #f97316) !important; background: var(--status-hold-bg, rgba(249, 115, 22, 0.1)) !important; }
+.schedule-dropdown-option.status-referred:hover, .schedule-dropdown-option.status-referred.kb-active, .schedule-dropdown-option.status-referred.selected { color: var(--status-referred, #8b5cf6) !important; background: var(--status-referred-bg, rgba(139, 92, 246, 0.1)) !important; }
+.schedule-dropdown-option.status-fyied:hover, .schedule-dropdown-option.status-fyied.kb-active, .schedule-dropdown-option.status-fyied.selected { color: var(--status-fyied, #14b8a6) !important; background: var(--status-fyied-bg, rgba(20, 184, 166, 0.1)) !important; }
+.schedule-dropdown-option.status-scheduling_in_progress:hover, .schedule-dropdown-option.status-scheduling_in_progress.kb-active, .schedule-dropdown-option.status-scheduling_in_progress.selected { color: var(--status-scheduling_in_progress, #14b8a6) !important; background: var(--status-scheduling_in_progress-bg, rgba(20, 184, 166, 0.1)) !important; }
+.schedule-dropdown-option.status-scheduled:hover, .schedule-dropdown-option.status-scheduled.kb-active, .schedule-dropdown-option.status-scheduled.selected { color: var(--status-scheduled, #22c55e) !important; background: var(--status-scheduled-bg, rgba(34, 197, 94, 0.1)) !important; }
+.schedule-dropdown-option.status-rsvped:hover, .schedule-dropdown-option.status-rsvped.kb-active, .schedule-dropdown-option.status-rsvped.selected { color: var(--status-rsvped, #10b981) !important; background: var(--status-rsvped-bg, rgba(16, 185, 129, 0.1)) !important; }
+.schedule-dropdown-option.status-regrets_sent:hover, .schedule-dropdown-option.status-regrets_sent.kb-active, .schedule-dropdown-option.status-regrets_sent.selected { color: var(--status-regrets_sent, #ef4444) !important; background: var(--status-regrets_sent-bg, rgba(239, 68, 68, 0.1)) !important; }
+.schedule-dropdown-option.status-passed:hover, .schedule-dropdown-option.status-passed.kb-active, .schedule-dropdown-option.status-passed.selected { color: var(--status-passed, #6b7280) !important; background: var(--status-passed-bg, rgba(107, 114, 128, 0.1)) !important; }
+.schedule-dropdown-option.status-canceled:hover, .schedule-dropdown-option.status-canceled.kb-active, .schedule-dropdown-option.status-canceled.selected { color: var(--status-canceled, #ef4444) !important; background: var(--status-canceled-bg, rgba(239, 68, 68, 0.1)) !important; }
+.schedule-dropdown-option.status-requires_hms_review:hover, .schedule-dropdown-option.status-requires_hms_review.kb-active, .schedule-dropdown-option.status-requires_hms_review.selected { color: var(--status-requires_hms_review, #d97706) !important; background: var(--status-requires_hms_review-bg, rgba(245, 158, 11, 0.1)) !important; }
+
+/* Compact indicators row — right-aligned on second line */
+.schedule-card-indicators {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Compact indicator - icon + count */
+.schedule-card-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    font-weight: 500;
+    position: relative;
+    cursor: default;
+}
+
+.schedule-card-indicator svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.schedule-card-indicator .indicator-count {
+    line-height: 1;
+}
+
+/* Edit/view button on the card */
+.schedule-card-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 2px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    position: relative;
+    transition: color 0.15s ease;
+}
+
+.schedule-card-edit-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.schedule-card-edit-btn:hover {
+    color: var(--text-primary);
+}
+
+/* Shared tooltip styles for indicators and edit button */
+.schedule-card-indicator .indicator-tooltip,
+.schedule-card-edit-btn .indicator-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 9999;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    line-height: 1.6;
+}
+
+.schedule-card-indicator .indicator-tooltip::after,
+.schedule-card-edit-btn .indicator-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--text-primary);
+}
+
+.schedule-card-indicator:hover .indicator-tooltip,
+.schedule-card-edit-btn:hover .indicator-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Body-level card tooltip (appended to <body> to escape card transform stacking) */
+.card-body-tooltip {
+    position: fixed;
+    z-index: 99999;
+    background: var(--text-primary, #1e293b);
+    color: var(--bg-primary, #fff);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm, 6px);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.6;
+    white-space: normal;
+    max-width: 300px;
+    text-align: left;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+.card-body-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: var(--arrow-offset, 50%);
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--text-primary, #1e293b);
+}
+.card-body-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+}
+.card-body-tooltip .card-tooltip-header {
+    margin-bottom: 2px;
+    text-align: center;
+    font-weight: 600;
+}
+.card-body-tooltip ul {
+    list-style: disc;
+    margin: 0;
+    padding-left: 16px;
+}
+.card-body-tooltip li {
+    padding: 1px 0;
+}
+
+
+/* =============================================================================
+   Status Dropdown (pill-shaped trigger with custom menu)
+   ============================================================================= */
+.schedule-status-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.schedule-card-status-select {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 22px 3px 8px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--text-tertiary);
+    cursor: pointer;
+    background-color: rgba(107, 114, 128, 0.1);
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
+.schedule-card-status-select:hover {
+    opacity: 0.9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-card-status-select:focus,
+.schedule-card-status-select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent);
+}
+
+/* =============================================================================
+   Status Colors - colored left bar + dropdown badge
+   ============================================================================= */
+
+/* Received - Blue */
+.schedule-card.status-received .schedule-card-status-bar { background: var(--status-received, #2b5ea0); }
+.schedule-card.status-received .schedule-card-status-select {
+    color: var(--status-received, #2b5ea0);
+    border-color: var(--status-received, #2b5ea0);
+    background-color: var(--status-received-bg, rgba(43, 94, 160, 0.1));
+}
+
+/* Hold - Orange */
+.schedule-card.status-hold .schedule-card-status-bar { background: var(--status-hold, #f97316); }
+.schedule-card.status-hold .schedule-card-status-select {
+    color: var(--status-hold, #f97316);
+    border-color: var(--status-hold, #f97316);
+    background-color: var(--status-hold-bg, rgba(249, 115, 22, 0.1));
+}
+
+/* Referred - Purple */
+.schedule-card.status-referred .schedule-card-status-bar { background: var(--status-referred, #8b5cf6); }
+.schedule-card.status-referred .schedule-card-status-select {
+    color: var(--status-referred, #8b5cf6);
+    border-color: var(--status-referred, #8b5cf6);
+    background-color: var(--status-referred-bg, rgba(139, 92, 246, 0.1));
+}
+
+/* FYI'd - Teal */
+.schedule-card.status-fyied .schedule-card-status-bar { background: var(--status-fyied, #14b8a6); }
+.schedule-card.status-fyied .schedule-card-status-select {
+    color: var(--status-fyied, #14b8a6);
+    border-color: var(--status-fyied, #14b8a6);
+    background-color: var(--status-fyied-bg, rgba(20, 184, 166, 0.1));
+}
+
+/* Scheduling in Progress - Teal */
+.schedule-card.status-scheduling_in_progress .schedule-card-status-bar { background: var(--status-scheduling_in_progress, #14b8a6); }
+.schedule-card.status-scheduling_in_progress .schedule-card-status-select {
+    color: var(--status-scheduling_in_progress, #14b8a6);
+    border-color: var(--status-scheduling_in_progress, #14b8a6);
+    background-color: var(--status-scheduling_in_progress-bg, rgba(20, 184, 166, 0.1));
+}
+
+/* Scheduled - Green */
+.schedule-card.status-scheduled .schedule-card-status-bar { background: var(--status-scheduled, #22c55e); }
+.schedule-card.status-scheduled .schedule-card-status-select {
+    color: var(--status-scheduled, #22c55e);
+    border-color: var(--status-scheduled, #22c55e);
+    background-color: var(--status-scheduled-bg, rgba(34, 197, 94, 0.1));
+}
+
+/* RSVP'd - Emerald */
+.schedule-card.status-rsvped .schedule-card-status-bar { background: var(--status-rsvped, #10b981); }
+.schedule-card.status-rsvped .schedule-card-status-select {
+    color: var(--status-rsvped, #10b981);
+    border-color: var(--status-rsvped, #10b981);
+    background-color: var(--status-rsvped-bg, rgba(16, 185, 129, 0.1));
+}
+
+/* Regrets Sent - Pink */
+.schedule-card.status-regrets_sent .schedule-card-status-bar { background: var(--status-regrets_sent, #ef4444); }
+.schedule-card.status-regrets_sent .schedule-card-status-select {
+    color: var(--status-regrets_sent, #ef4444);
+    border-color: var(--status-regrets_sent, #ef4444);
+    background-color: var(--status-regrets_sent-bg, rgba(239, 68, 68, 0.1));
+}
+
+/* Passed - Gray */
+.schedule-card.status-passed .schedule-card-status-bar { background: var(--status-passed, #6b7280); }
+.schedule-card.status-passed .schedule-card-status-select {
+    color: var(--status-passed, #6b7280);
+    border-color: var(--status-passed, #6b7280);
+    background-color: var(--status-passed-bg, rgba(107, 114, 128, 0.1));
+}
+
+/* Canceled - Red */
+.schedule-card.status-canceled .schedule-card-status-bar { background: var(--status-canceled, #ef4444); }
+.schedule-card.status-canceled .schedule-card-status-select {
+    color: var(--status-canceled, #ef4444);
+    border-color: var(--status-canceled, #ef4444);
+    background-color: var(--status-canceled-bg, rgba(239, 68, 68, 0.1));
+}
+
+/* Needs HMS Review - Amber */
+.schedule-card.status-requires_hms_review .schedule-card-status-bar { background: var(--status-requires_hms_review, #eab308); }
+.schedule-card.status-requires_hms_review .schedule-card-status-select {
+    color: var(--status-requires_hms_review, #eab308);
+    border-color: var(--status-requires_hms_review, #eab308);
+}
+
+/* Read-only cards: no dropdown arrow, no interaction on status (must come after status colors) */
+.schedule-card.read-only .schedule-card-status-select {
+    padding-right: 8px;
+    cursor: default;
+    pointer-events: none;
+}
+
+.schedule-card.read-only .schedule-card-status-select:hover {
+    opacity: 1;
+    box-shadow: none;
+}
+
+/* =============================================================================
+   Custom Dropdown Status Colors
+   ============================================================================= */
+
+/* Trigger: color, border, and background */
+.schedule-custom-dropdown.status-received .schedule-dropdown-trigger { color: var(--status-received, #2b5ea0); border-color: var(--status-received, #2b5ea0); background-color: var(--status-received-bg, rgba(43, 94, 160, 0.1)); }
+.schedule-custom-dropdown.status-hold .schedule-dropdown-trigger { color: var(--status-hold, #f97316); border-color: var(--status-hold, #f97316); background-color: var(--status-hold-bg, rgba(249, 115, 22, 0.1)); }
+.schedule-custom-dropdown.status-referred .schedule-dropdown-trigger { color: var(--status-referred, #8b5cf6); border-color: var(--status-referred, #8b5cf6); background-color: var(--status-referred-bg, rgba(139, 92, 246, 0.1)); }
+.schedule-custom-dropdown.status-fyied .schedule-dropdown-trigger { color: var(--status-fyied, #14b8a6); border-color: var(--status-fyied, #14b8a6); background-color: var(--status-fyied-bg, rgba(20, 184, 166, 0.1)); }
+.schedule-custom-dropdown.status-scheduling_in_progress .schedule-dropdown-trigger { color: var(--status-scheduling_in_progress, #14b8a6); border-color: var(--status-scheduling_in_progress, #14b8a6); background-color: var(--status-scheduling_in_progress-bg, rgba(20, 184, 166, 0.1)); }
+.schedule-custom-dropdown.status-scheduled .schedule-dropdown-trigger { color: var(--status-scheduled, #22c55e); border-color: var(--status-scheduled, #22c55e); background-color: var(--status-scheduled-bg, rgba(34, 197, 94, 0.1)); }
+.schedule-custom-dropdown.status-rsvped .schedule-dropdown-trigger { color: var(--status-rsvped, #10b981); border-color: var(--status-rsvped, #10b981); background-color: var(--status-rsvped-bg, rgba(16, 185, 129, 0.1)); }
+.schedule-custom-dropdown.status-regrets_sent .schedule-dropdown-trigger { color: var(--status-regrets_sent, #ef4444); border-color: var(--status-regrets_sent, #ef4444); background-color: var(--status-regrets_sent-bg, rgba(239, 68, 68, 0.1)); }
+.schedule-custom-dropdown.status-passed .schedule-dropdown-trigger { color: var(--status-passed, #6b7280); border-color: var(--status-passed, #6b7280); background-color: var(--status-passed-bg, rgba(107, 114, 128, 0.1)); }
+.schedule-custom-dropdown.status-canceled .schedule-dropdown-trigger { color: var(--status-canceled, #ef4444); border-color: var(--status-canceled, #ef4444); background-color: var(--status-canceled-bg, rgba(239, 68, 68, 0.1)); }
+.schedule-custom-dropdown.status-requires_hms_review .schedule-dropdown-trigger { color: var(--status-requires_hms_review, #eab308); border-color: var(--status-requires_hms_review, #eab308); background-color: var(--status-requires_hms_review-bg, rgba(245, 158, 11, 0.1)); }
+
+/* Dropdown menu: white background with gray border */
+.schedule-custom-dropdown .schedule-dropdown-menu {
+    background: white;
+    border-color: #9ca3af;
+}
+
+/* =============================================================================
+   Empty State
+   ============================================================================= */
+.schedule-empty-state {
+    padding: var(--spacing-xl);
+    color: var(--text-secondary);
+    font-size: var(--font-size-md);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* =============================================================================
+   Loading State
+   ============================================================================= */
+.schedule-loading {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-md);
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    z-index: 5;
+}
+
+.schedule-loading .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =============================================================================
+   Load More Button
+   ============================================================================= */
+.schedule-load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    color: var(--text-tertiary, #9ca3af);
+    font-size: var(--font-size-sm);
+}
+
+/* Auto-load (infinite scroll) spinner */
+.schedule-load-more-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* =============================================================================
+   Filter Sidebar Styling
+   ============================================================================= */
+.sidebar-header {
+    padding: var(--spacing-md) var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sidebar-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    transition: background 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+    background: var(--bg-secondary);
+    color: var(--accent-color);
+}
+
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-sm);
+    padding-bottom: 16px;
+}
+
+/* Filter Accordion Sections */
+.filter-section {
+    margin-bottom: var(--spacing-xs);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+.filter-section.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    cursor: pointer;
+    user-select: none;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: background 0.2s ease;
+}
+
+.filter-header:hover {
+    background: var(--bg-secondary);
+}
+
+.filter-header .chevron {
+    transition: transform 0.2s ease;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.filter-section.collapsed .filter-header .chevron {
+    transform: rotate(-90deg);
+}
+
+.filter-content {
+    padding: var(--spacing-sm) var(--spacing-md);
+    max-height: 200px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.filter-section.collapsed .filter-content {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+}
+
+/* Filter Checkboxes */
+.filter-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.filter-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.filter-checkbox-item input[type="checkbox"],
+.filter-checkbox-item input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.filter-checkbox-item label {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Select All Option */
+.filter-checkbox-item.select-all-item {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+}
+
+.filter-checkbox-item.select-all-item label {
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* Coming Soon Badge */
+.coming-soon {
+    display: inline-block;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    font-style: italic;
+    padding: var(--spacing-sm);
+}
+
+/* Clear All Button */
+.clear-all-btn {
+    display: block;
+    width: calc(100% - var(--spacing-md) * 2);
+    margin: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.clear-all-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+/* Toggle filter group (top-level quick filters) */
+/* Favorite filter buttons */
+.filter-favorites {
+    display: flex;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-top: var(--spacing-xs);
+    border-top: 1px solid var(--border-color);
+}
+
+.filter-favorite-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.filter-favorite-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.filter-favorite-btn svg {
+    flex-shrink: 0;
+}
+
+/* Auto-load checkbox */
+.filter-auto-load {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px var(--spacing-md) var(--spacing-sm);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.filter-auto-load input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--accent-color);
+    cursor: pointer;
+}
+
+.filter-auto-load span {
+    cursor: pointer;
+}
+
+/* =============================================================================
+   Named Filter Presets dropdown (top of the filter sidebar)
+   ============================================================================= */
+.filter-presets {
+    margin-bottom: var(--spacing-sm);
+}
+
+.preset-dropdown {
+    position: relative;
+}
+
+/* Trigger — styled like the app's other selects/buttons */
+.preset-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    text-align: left;
+}
+
+.preset-dropdown-trigger:hover {
+    border-color: var(--accent-color);
+}
+
+.filter-presets.has-active .preset-dropdown-trigger {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.preset-trigger-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+}
+
+.filter-presets.has-active .preset-trigger-icon {
+    color: var(--accent-color);
+}
+
+.preset-trigger-icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.preset-dropdown-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preset-chevron {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+}
+
+.preset-chevron svg {
+    width: 14px;
+    height: 14px;
+}
+
+.filter-presets.open .preset-chevron {
+    transform: rotate(180deg);
+}
+
+/* Menu — visually extends the trigger box downward (flush, connected borders),
+   overlaying the filter sections below without pushing them down. Absolute to
+   the dropdown so it's immune to ancestor transforms. */
+.preset-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    box-shadow: 0 8px 14px -6px rgba(0, 0, 0, 0.16);
+    z-index: 1000;
+}
+
+/* When open, the trigger squares off its bottom so it reads as one box. */
+.filter-presets.open .preset-dropdown-trigger {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.filter-presets.open .preset-dropdown-menu {
+    display: block;
+}
+
+.preset-list {
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.preset-empty {
+    padding: 10px 12px;
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    font-style: italic;
+    text-align: center;
+}
+
+.preset-item {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    border-radius: var(--radius-sm, 4px);
+    transition: background 0.1s ease;
+}
+
+.preset-item:hover {
+    background: var(--bg-secondary);
+}
+
+.preset-item.active {
+    background: var(--bg-tertiary, #eef2f7);
+}
+
+.preset-item-apply {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: 8px 8px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.preset-item.active .preset-item-apply {
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.preset-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preset-item-default,
+.preset-item-delete {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: color 0.12s ease, background 0.12s ease;
+}
+
+.preset-item-default svg,
+.preset-item-delete svg {
+    width: 15px;
+    height: 15px;
+}
+
+.preset-item-default:hover {
+    color: var(--accent-gold, #c9a227);
+    background: var(--bg-primary);
+}
+
+.preset-item-default.is-default {
+    color: var(--accent-gold, #c9a227);
+}
+
+.preset-item-delete:hover {
+    color: var(--danger-color, #dc2626);
+    background: var(--bg-primary);
+}
+
+/* "Save current filters" button — styled like Clear All Filters, sitting
+   directly above it in the sidebar. */
+.preset-save-button-wrap {
+    flex-shrink: 0;
+}
+
+.preset-save-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: calc(100% - var(--spacing-md) * 2);
+    margin: var(--spacing-sm) var(--spacing-md) 0;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preset-save-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.preset-save-icon {
+    display: inline-flex;
+}
+
+.preset-save-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.preset-save-form {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: var(--spacing-sm) var(--spacing-md) 0;
+}
+
+.preset-name-input {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm, 4px);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    background: var(--bg-primary);
+}
+
+.preset-name-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.preset-name-confirm,
+.preset-name-cancel {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm, 4px);
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.preset-name-confirm svg,
+.preset-name-cancel svg {
+    width: 15px;
+    height: 15px;
+}
+
+.preset-name-confirm {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.preset-name-confirm:hover {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.preset-name-cancel {
+    color: var(--text-tertiary);
+}
+
+.preset-name-cancel:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+/* App-style hover tooltips for preset icon buttons (matches the dashboard
+   header tooltip). Positioned to the LEFT so they stay on the same row and
+   are never clipped by the menu's vertical scroll. */
+.preset-tip[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 4px 10px;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    z-index: 1100;
+    pointer-events: none;
+}
+
+.preset-tip[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    right: calc(100% + 3px);
+    top: 50%;
+    transform: translateY(-50%);
+    border: 5px solid transparent;
+    border-left-color: var(--text-primary);
+    z-index: 1100;
+    pointer-events: none;
+}
+
+/* Variant positioned ABOVE the button (used by the save/cancel buttons on the
+   new-preset form, which have room above but not to the side). */
+.preset-tip-top[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    z-index: 1100;
+    pointer-events: none;
+}
+
+.preset-tip-top[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--text-primary);
+    z-index: 1100;
+    pointer-events: none;
+}
+
+/* Filter toast notification */
+.filter-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text-primary, #1e293b);
+    color: var(--bg-primary, #fff);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 9999;
+}
+
+.filter-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* =============================================================================
+   Sidebar Overlay (Mobile ONLY - Fixed bug)
+   ============================================================================= */
+.schedule-sidebar-overlay {
+    display: none;
+}
+
+/* =============================================================================
+   Responsive Styles
+   ============================================================================= */
+@media (max-width: 1024px) {
+    .schedule-filter-sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 10;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .schedule-filter-sidebar.open {
+        transform: translateX(0);
+    }
+
+    .schedule-filters-toggle-btn {
+        display: flex;
+    }
+
+    .schedule-header-bar {
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+
+    .schedule-search-container {
+        order: 1;
+        flex-basis: 100%;
+        max-width: none;
+    }
+
+    .schedule-header-select {
+        order: 2;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Schedule responds to collapsed sidebar on mobile */
+    body.schedule-page .main-content,
+    body.schedule-page.sidebar-collapsed .main-content {
+        margin-left: var(--sidebar-collapsed-width, 60px) !important;
+        width: calc(100% - var(--sidebar-collapsed-width, 60px)) !important;
+    }
+
+    .schedule-redesign-container {
+        height: calc(100vh - 60px);
+    }
+
+    .schedule-header-bar {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .schedule-card-body {
+        gap: var(--spacing-sm);
+    }
+
+    .schedule-view-container {
+        padding: var(--spacing-md);
+    }
+
+    .schedule-header-select-label {
+        display: none;
+    }
+}
+
+/* =============================================================================
+   Detail Panel — Responsive: hide empty, fullscreen when event selected
+   ============================================================================= */
+@media (max-width: 1024px) {
+    /* Hide empty detail panel on narrow screens */
+    .schedule-detail-panel:not(.has-event) {
+        display: none;
+    }
+
+    /* When an event is selected, panel fills the below-header area */
+    .schedule-detail-panel.has-event {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 20;
+        min-width: 0;
+        max-width: none;
+        max-height: none;
+        flex: none;
+        width: auto;
+        height: auto;
+        border-left: none;
+        border-bottom: none;
+    }
+}
+
+/* =============================================================================
+   Detail Panel — Persistent right panel (always visible)
+   ============================================================================= */
+.schedule-detail-panel {
+    flex: 1 1 40%;
+    min-width: 320px;
+    max-width: 50%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #e5e7eb; /* gray-200 separator */
+    transition: flex-basis 0.3s ease, min-width 0.3s ease, max-width 0.3s ease;
+}
+
+/* Spreadsheet mode never uses the side panel (it has Excel-style cell
+   navigation instead), so the panel stays collapsed to zero width and the
+   table takes the full area. */
+.schedule-list-detail-wrapper.spreadsheet-mode .schedule-detail-panel {
+    flex: 0 0 0;
+    min-width: 0;
+    max-width: 0;
+    border-left: none;
+    overflow: hidden;
+}
+
+.schedule-list-detail-wrapper.spreadsheet-mode .schedule-main-area {
+    flex: 1 1 73%;
+}
+
+.detail-panel-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Panel header */
+.detail-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 16px 16px 8px 16px;
+    flex-shrink: 0;
+}
+
+.detail-panel-header-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.detail-panel-title {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 2px 0;
+    line-height: 1.3;
+    word-wrap: break-word;
+}
+
+.detail-panel-org {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: 0;
+}
+
+/* Org name is clickable when an organization is linked — opens its read-only popup. */
+.detail-panel-org-link {
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color 0.12s ease;
+}
+
+.detail-panel-org-link:hover,
+.detail-panel-org-link:focus-visible {
+    color: var(--accent-color);
+    outline: none;
+}
+
+/* Bolded event title · unbolded org, beneath the review-prompt heading */
+.detail-panel-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.3;
+    word-wrap: break-word;
+}
+
+.detail-panel-subtitle-title {
+    font-weight: 700;
+}
+
+.detail-panel-subtitle-org {
+    font-weight: 400;
+}
+
+/* Inline org + status row */
+.detail-panel-org-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.detail-panel-status {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--text-tertiary);
+    background-color: rgba(107, 114, 128, 0.1);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Status badge colors — matches card dropdown exactly */
+.detail-panel-status.status-received { color: var(--status-received, #2b5ea0); border-color: var(--status-received, #2b5ea0); background-color: var(--status-received-bg, rgba(43, 94, 160, 0.1)); }
+.detail-panel-status.status-hold { color: var(--status-hold, #f97316); border-color: var(--status-hold, #f97316); background-color: var(--status-hold-bg, rgba(249, 115, 22, 0.1)); }
+.detail-panel-status.status-referred { color: var(--status-referred, #8b5cf6); border-color: var(--status-referred, #8b5cf6); background-color: var(--status-referred-bg, rgba(139, 92, 246, 0.1)); }
+.detail-panel-status.status-fyied { color: var(--status-fyied, #14b8a6); border-color: var(--status-fyied, #14b8a6); background-color: var(--status-fyied-bg, rgba(20, 184, 166, 0.1)); }
+.detail-panel-status.status-scheduling_in_progress { color: var(--status-scheduling_in_progress, #14b8a6); border-color: var(--status-scheduling_in_progress, #14b8a6); background-color: var(--status-scheduling_in_progress-bg, rgba(20, 184, 166, 0.1)); }
+.detail-panel-status.status-scheduled { color: var(--status-scheduled, #22c55e); border-color: var(--status-scheduled, #22c55e); background-color: var(--status-scheduled-bg, rgba(34, 197, 94, 0.1)); }
+.detail-panel-status.status-rsvped { color: var(--status-rsvped, #10b981); border-color: var(--status-rsvped, #10b981); background-color: var(--status-rsvped-bg, rgba(16, 185, 129, 0.1)); }
+.detail-panel-status.status-regrets_sent { color: var(--status-regrets_sent, #ef4444); border-color: var(--status-regrets_sent, #ef4444); background-color: var(--status-regrets_sent-bg, rgba(239, 68, 68, 0.1)); }
+.detail-panel-status.status-passed { color: var(--status-passed, #6b7280); border-color: var(--status-passed, #6b7280); background-color: var(--status-passed-bg, rgba(107, 114, 128, 0.1)); }
+.detail-panel-status.status-canceled { color: var(--status-canceled, #ef4444); border-color: var(--status-canceled, #ef4444); background-color: var(--status-canceled-bg, rgba(239, 68, 68, 0.1)); }
+.detail-panel-status.status-requires_hms_review { color: var(--status-requires_hms_review, #eab308); border-color: var(--status-requires_hms_review, #eab308); background-color: var(--status-requires_hms_review-bg, rgba(245, 158, 11, 0.1)); }
+
+/* Interactive status dropdown in detail panel */
+.detail-panel-status-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.detail-panel-status-dropdown-wrapper .detail-panel-status {
+    position: relative;
+    cursor: pointer;
+    padding: 3px 22px 3px 8px;
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.detail-panel-status-dropdown-wrapper .detail-panel-status:hover {
+    opacity: 0.9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.detail-panel-status-dropdown-wrapper .detail-panel-status:focus:not(.focus-ring),
+.detail-panel-status-dropdown-wrapper .detail-panel-status:focus-visible:not(.focus-ring) {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent);
+}
+
+/* Keyboard focus ring on the status dropdown — scoped under the wrapper so it
+   beats the wrapper's own :focus rule on specificity. */
+.detail-panel-status-dropdown-wrapper .detail-panel-status.focus-ring {
+    outline: 2px solid var(--accent-color, #2b5ea0);
+    outline-offset: 2px;
+}
+
+/* Keyboard focus ring for detail-panel controls. We add .focus-ring only on
+   keyboard focus (Tab / arrows / keyboard navigation); a mouse click focuses a
+   control functionally — so Enter activates it — but without .focus-ring, and
+   the rule below suppresses the default ring in that case. The first Tab/arrow
+   after a click reveals the ring. */
+.detail-panel-footer .detail-panel-btn.focus-ring,
+.detail-panel-close.focus-ring,
+.detail-panel-more-btn.focus-ring,
+.detail-panel-status.focus-ring,
+.overlap-item.focus-ring {
+    outline: 2px solid var(--accent-color, #2b5ea0);
+    outline-offset: 2px;
+}
+
+.detail-panel-footer .detail-panel-btn:focus:not(.focus-ring),
+.detail-panel-close:focus:not(.focus-ring),
+.detail-panel-more-btn:focus:not(.focus-ring),
+.detail-panel-status:focus:not(.focus-ring),
+.overlap-item:focus:not(.focus-ring) {
+    outline: none;
+}
+
+/* Per-status arrow colors handled by the chevron ::after pseudo-element at
+   the bottom of this file (uses mask + currentColor, so the arrow tracks the
+   badge text color, including customized status colors). */
+
+/* Detail panel dropdown menu — reuses schedule-dropdown-option styles */
+.detail-panel-dropdown-menu {
+    position: fixed;
+    display: none;
+    min-width: 180px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    padding: 4px;
+}
+.detail-panel-status-dropdown-wrapper.open .detail-panel-dropdown-menu {
+    display: block;
+}
+
+.detail-panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    margin-left: var(--spacing-sm);
+}
+
+.detail-panel-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease, color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.detail-panel-close:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Panel body — scrollable */
+.detail-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px;
+}
+
+/* Reuse v2-readonly classes from event-editing-modal-v2.css for content sections */
+.detail-panel-body .v2-readonly-primary {
+    margin-bottom: 0;
+}
+
+.detail-panel-body .v2-readonly-datetime {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+/* Inline relative time appended to date line */
+.detail-panel-body .v2-readonly-relative-time-inline {
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+    color: var(--text-tertiary);
+}
+
+.detail-panel-body .v2-readonly-location {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.detail-panel-body .v2-readonly-location svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Type/format inlined right after location */
+.detail-panel-body .v2-readonly-type-format-inline {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+}
+
+.detail-panel-body .v2-readonly-type-format {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.detail-panel-body .v2-readonly-secondary {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.detail-panel-body .v2-readonly-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border: none;
+    padding: 16px 0 0 0;
+}
+
+/* Inline variant for compact sections (participants, POC) */
+.detail-panel-body .v2-readonly-section.inline-section {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.detail-panel-body .v2-readonly-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #9ca3af;
+    text-transform: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.detail-panel-body .v2-label-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* Add Staff button in detail panel (mirrors modal v2-add-staff-btn) */
+.detail-panel-body .v2-staff-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.detail-panel-body .v2-add-staff-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: var(--accent-color-light, rgba(43, 94, 160, 0.1));
+    border: 1.5px dashed var(--accent-color, #2b5ea0);
+    border-radius: var(--radius-full, 9999px);
+    font-size: var(--font-size-xs, 12px);
+    color: var(--accent-color, #2b5ea0);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.detail-panel-body .v2-add-staff-btn:hover {
+    background: var(--accent-color, #2b5ea0);
+    color: white;
+    border-style: solid;
+}
+.detail-panel-body .v2-add-staff-btn svg {
+    width: 12px;
+    height: 12px;
+}
+.detail-panel-body .v2-staff-dropdown {
+    position: fixed;
+    min-width: 220px;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--bg-primary, #fff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    display: none;
+}
+.detail-panel-body .v2-staff-dropdown.visible {
+    display: block;
+}
+.detail-panel-body .v2-staff-dropdown-header {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary, #9ca3af);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    background: var(--bg-secondary, #f8fafc);
+}
+.detail-panel-body .v2-staff-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+.detail-panel-body .v2-staff-dropdown-item:hover {
+    background: var(--bg-secondary, #f8fafc);
+}
+.detail-panel-body .v2-staff-dropdown-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg-tertiary, #f1f5f9);
+}
+.detail-panel-body .v2-staff-dropdown-item.disabled:hover {
+    background: var(--bg-tertiary, #f1f5f9);
+}
+.detail-panel-body .v2-staff-dropdown-item svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-tertiary, #9ca3af);
+}
+.detail-panel-body .v2-staff-dropdown-item .v2-staff-check {
+    margin-left: auto;
+    color: var(--success, #10b981);
+}
+.detail-panel-body .v2-staff-dropdown-empty {
+    padding: 16px 12px;
+    text-align: center;
+    color: var(--text-tertiary, #9ca3af);
+    font-size: 12px;
+}
+
+.detail-panel-body .v2-readonly-value {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.detail-panel-body .v2-readonly-value.multiline {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.detail-panel-body .v2-readonly-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.detail-panel-body .v2-readonly-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+    cursor: default;
+}
+
+.detail-panel-body .v2-readonly-tag:hover,
+.detail-panel-body .v2-readonly-tag:focus-visible {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Overlap items */
+.overlap-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--bg-secondary, #f8fafc);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.overlap-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.overlap-item:hover,
+.overlap-item:focus-visible {
+    background: var(--bg-primary, #ffffff);
+    outline: none;
+}
+
+.overlap-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.overlap-time {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--text-tertiary, #9ca3af);
+    white-space: nowrap;
+}
+
+.detail-panel-body .v2-readonly-staff-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.detail-panel-body .v2-readonly-staff-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    background: var(--bg-secondary, #f8fafc);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+}
+
+.detail-panel-body .v2-readonly-participants {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+/* --- Attachments --- */
+.detail-panel-body .v2-attachment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.detail-panel-body .v2-attachment-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--bg-primary, #ffffff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-md, 8px);
+}
+
+.detail-panel-body .v2-attachment-icon {
+    flex-shrink: 0;
+    color: var(--text-secondary, #64748b);
+}
+
+.detail-panel-body .v2-attachment-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.detail-panel-body .v2-attachment-name {
+    font-size: var(--font-size-sm, 13px);
+    color: var(--accent-color, #6366f1);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.detail-panel-body .v2-attachment-name:hover {
+    text-decoration: underline;
+}
+
+.detail-panel-body .v2-attachment-name--disabled {
+    color: var(--text-secondary, #64748b);
+    pointer-events: none;
+}
+
+.detail-panel-body .v2-attachment-meta {
+    font-size: 11px;
+    color: var(--text-secondary, #9ca3af);
+}
+
+.detail-panel-body .v2-attachment-version {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--text-secondary, #9ca3af);
+}
+
+.detail-panel-body .v2-attachment-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: var(--radius-full, 999px);
+}
+
+.detail-panel-body .v2-attachment-badge--scanning {
+    background: var(--accent-color-light, rgba(99, 102, 241, 0.08));
+    color: var(--accent-color, #6366f1);
+}
+
+.detail-panel-body .v2-attachment-badge--infected {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.detail-panel-body .v2-attachment-controls {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.detail-panel-body .v2-attachment-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: none;
+    border-radius: var(--radius-sm, 6px);
+    color: var(--text-secondary, #64748b);
+    cursor: pointer;
+}
+
+.detail-panel-body .v2-attachment-btn:hover {
+    background: var(--border-color, #e5e7eb);
+    color: var(--text-primary, #1e293b);
+}
+
+.detail-panel-body .v2-attachment-btn--danger:hover {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.detail-panel-body .v2-attachment-empty {
+    font-size: var(--font-size-sm, 13px);
+    color: var(--text-secondary, #9ca3af);
+    font-style: italic;
+}
+
+.detail-panel-body .v2-attachment-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 4px 10px;
+    border: 1px dashed var(--border-color, #cbd5e1);
+    background: var(--bg-primary, #ffffff);
+    border-radius: var(--radius-md, 8px);
+    font-size: var(--font-size-sm, 13px);
+    color: var(--text-secondary, #64748b);
+    cursor: pointer;
+}
+
+.detail-panel-body .v2-attachment-add:hover {
+    border-color: var(--accent-color, #6366f1);
+    color: var(--accent-color, #6366f1);
+}
+
+.detail-panel-body .v2-readonly-participant {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.detail-panel-body .v2-readonly-missing {
+    margin-top: 16px;
+    padding-top: 16px;
+}
+
+.detail-panel-body .v2-readonly-missing-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: #9ca3af;
+    text-transform: none;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 0;
+}
+
+.detail-panel-body .v2-readonly-missing-toggle:hover {
+    color: var(--text-secondary);
+}
+
+.detail-panel-body .v2-readonly-missing-chevron {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s ease;
+}
+
+.detail-panel-body .v2-readonly-missing-chevron.rotated {
+    transform: rotate(180deg);
+}
+
+.detail-panel-body .v2-readonly-missing-list {
+    list-style: none;
+    margin: var(--spacing-sm) 0 0 0;
+    padding: 0;
+    display: none;
+}
+
+.detail-panel-body .v2-readonly-missing-list.visible {
+    display: block;
+}
+
+.detail-panel-body .v2-readonly-missing-list li {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    padding: 2px 0;
+}
+
+/* Internal notes — visually distinct */
+
+/* Review routing table — read-only in panel body */
+.detail-panel-review-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-xs);
+    margin-top: 4px;
+}
+
+.detail-panel-review-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    color: var(--text-secondary, #6b7280);
+    vertical-align: middle;
+}
+
+.detail-panel-review-table tr:hover td {
+    background: transparent;
+}
+
+.detail-panel-review-table tr:last-child td {
+    border-bottom: none;
+}
+
+.detail-panel-review-table .review-name {
+    font-weight: 500;
+    color: var(--text-primary, #1f2937);
+}
+
+.detail-panel-review-table .review-status {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.detail-panel-review-table .review-status-pending {
+    color: #d97706;
+}
+
+.detail-panel-review-table .review-status-approved {
+    color: #16a34a;
+}
+
+.detail-panel-review-table .review-status-sent-back {
+    color: #ef4444;
+}
+
+/* Panel footer — sticky bottom */
+.detail-panel-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 16px 16px 16px;
+    border-top: none;
+    flex-shrink: 0;
+    background: var(--bg-primary);
+    overflow: hidden;
+}
+
+/* Footer button base — stretch to fill */
+.detail-panel-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.detail-panel-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* Edit — gray filled (primary action) */
+.detail-panel-btn-edit {
+    background: white;
+    color: var(--text-secondary, #6b7280);
+    border-color: var(--border-color, #e5e7eb);
+}
+
+.detail-panel-btn-edit:hover {
+    background: var(--bg-secondary, #f8fafc);
+    border-color: var(--text-tertiary, #9ca3af);
+}
+
+/* Calendar, Copy, Email — white outline */
+.detail-panel-btn-primary,
+.detail-panel-btn-ghost,
+.detail-panel-btn-email {
+    background: white;
+    color: var(--text-secondary, #6b7280);
+    border-color: var(--border-color, #e5e7eb);
+}
+
+.detail-panel-btn-primary:hover,
+.detail-panel-btn-ghost:hover,
+.detail-panel-btn-email:hover {
+    background: var(--bg-secondary, #f8fafc);
+    color: var(--text-primary, #1f2937);
+    border-color: var(--text-tertiary, #9ca3af);
+}
+
+/* Three-dot more menu button */
+.detail-panel-more-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.detail-panel-more-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.detail-panel-more-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* More menu dropdown */
+.detail-panel-more-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg, 0 4px 12px rgba(0,0,0,0.1));
+    min-width: 140px;
+    z-index: 50;
+    padding: 4px 0;
+}
+
+.detail-panel-more-menu.visible {
+    display: block;
+}
+
+.detail-panel-more-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.1s ease;
+    white-space: nowrap;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.detail-panel-more-menu-item:hover,
+.detail-panel-more-menu-item.kb-active {
+    background: var(--bg-secondary, #f8fafc);
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.detail-panel-more-menu-item svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* Destructive item (Delete) */
+.detail-panel-more-menu-item-danger {
+    color: var(--important, #c0392b);
+}
+
+.detail-panel-more-menu-item-danger:hover,
+.detail-panel-more-menu-item-danger.kb-active {
+    background: var(--important-light, rgba(192, 57, 43, 0.08));
+    color: var(--important, #c0392b);
+}
+
+/* =========================================================================
+   Export Dropdown (page header)
+   ========================================================================= */
+.export-dropdown-wrapper {
+    position: relative;
+}
+
+.export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 0.75rem);
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    font-family: inherit;
+    line-height: 1.4;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.export-dropdown-item {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.export-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.export-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.export-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-md, 6px);
+    box-shadow: var(--shadow-lg, 0 4px 12px rgba(0,0,0,0.1));
+    min-width: 185px;
+    z-index: 100;
+    padding: 4px 0;
+}
+
+.export-dropdown-menu.visible {
+    display: block;
+}
+
+.export-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-secondary, #64748b);
+    cursor: pointer;
+    transition: background 0.1s ease;
+    white-space: nowrap;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.export-dropdown-item:hover {
+    background: var(--bg-secondary, #f8fafc);
+    color: var(--text-primary, #1e293b);
+}
+
+.export-dropdown-item:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.export-dropdown-item svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.export-dropdown-divider {
+    height: 1px;
+    background: var(--border-color, #e5e7eb);
+    margin: 4px 0;
+}
+
+/* Export spinner animation */
+@keyframes export-spin {
+    to { transform: rotate(360deg); }
+}
+
+.export-spinner {
+    width: 14px;
+    height: 14px;
+    animation: export-spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+/* Export toast notification */
+.export-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    padding: 10px 20px;
+    border-radius: var(--radius-md, 6px);
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+
+.export-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.export-toast-error {
+    background: #ef4444;
+}
+
+.export-toast-info {
+    background: var(--accent, #3b82f6);
+}
+
+/* Responsive: hide label on small screens */
+@media (max-width: 768px) {
+    .export-btn-label {
+        display: none;
+    }
+    .export-btn {
+        padding: 6px 8px;
+    }
+}
+
+/* =========================================================================
+   View Toggle (List / Spreadsheet)  — mirrors .v2-toggle-group / .v2-toggle-btn
+   ========================================================================= */
+.schedule-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg-secondary, #f1f5f9);
+    border-radius: var(--radius-md, 6px);
+    padding: 3px;
+}
+
+.schedule-view-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary, #9ca3af);
+    border-radius: calc(var(--radius-md, 6px) - 2px);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.schedule-view-toggle-btn:hover:not(.active) {
+    color: var(--text-primary, #1e293b);
+}
+
+.schedule-view-toggle-btn.active {
+    background: var(--bg-primary, #fff);
+    color: var(--text-primary, #1e293b);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-view-toggle-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* =========================================================================
+   Spreadsheet Mode — layout overrides
+   ========================================================================= */
+.schedule-view-container.spreadsheet-mode {
+    padding: 0;
+    background: var(--bg-primary, #fff);
+    /* Stop vertical scrolling from happening here so the horizontal scrollbar
+       stays pinned to the bottom of the viewport (it lives on the wrapper
+       below, which now fills the column). */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.schedule-view-container.spreadsheet-mode > * {
+    max-width: none;
+}
+
+.schedule-view-container.spreadsheet-mode #schedule-event-list {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    min-height: 0;
+    margin-bottom: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================================
+   Spreadsheet View
+   ========================================================================= */
+.schedule-spreadsheet-wrapper {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0;
+    flex: 1;
+    min-height: 0;
+    background: #ffffff;
+    /* Slightly chunkier scrollbars so the bottom-pinned horizontal bar is
+       easier to grab. */
+    scrollbar-width: auto;
+}
+
+.schedule-spreadsheet-wrapper::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+}
+
+.schedule-spreadsheet-wrapper::-webkit-scrollbar-track {
+    background: var(--bg-secondary, #f8fafc);
+}
+
+.schedule-spreadsheet-wrapper::-webkit-scrollbar-thumb {
+    background: #c7ced8;
+    border: 3px solid var(--bg-secondary, #f8fafc);
+    border-radius: 8px;
+}
+
+.schedule-spreadsheet-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.schedule-spreadsheet-wrapper::-webkit-scrollbar-corner {
+    background: var(--bg-secondary, #f8fafc);
+}
+
+.schedule-spreadsheet {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.schedule-spreadsheet thead th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary, #f8fafc);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary, #9ca3af);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border-color, #e5e7eb);
+    white-space: nowrap;
+    text-align: left;
+    z-index: 2;
+}
+
+.schedule-spreadsheet thead th.col-status-bar {
+    width: 4px;
+    padding: 0;
+}
+
+.schedule-spreadsheet tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+    color: var(--text-primary, #1e293b);
+    vertical-align: middle;
+}
+
+.schedule-spreadsheet tbody td.col-status-bar {
+    width: 4px;
+    padding: 0;
+    max-width: 4px;
+}
+
+.schedule-spreadsheet tbody td.col-title {
+    max-width: 350px;
+    font-weight: 600;
+}
+
+.schedule-spreadsheet tbody td.col-description {
+    max-width: 300px;
+    color: var(--text-secondary, #6b7280);
+}
+
+.schedule-spreadsheet tbody td.col-status {
+    overflow: visible;
+}
+
+/* Editable choice cells (type / format / timezone) — neutral inline dropdown.
+   The menu is portaled to <body>, so the cell itself needn't be overflow-visible,
+   but the trigger should never clip its chevron. */
+.schedule-spreadsheet tbody td.col-choice {
+    overflow: visible;
+}
+
+.schedule-cell-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.schedule-cell-dropdown-select {
+    display: inline-flex;
+    align-items: center;
+    max-width: 180px;
+    padding: 2px 20px 2px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary, #1e293b);
+    background-repeat: no-repeat;
+    background-position: right 5px center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.schedule-cell-dropdown-select:hover {
+    border-color: var(--border-color, #e5e7eb);
+    background-color: var(--bg-primary, #ffffff);
+}
+
+.schedule-cell-dropdown-select:focus,
+.schedule-cell-dropdown-select:focus-visible {
+    outline: none;
+    border-color: var(--accent-color, var(--accent, #2563eb));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color, var(--accent, #2563eb)) 22%, transparent);
+}
+
+.schedule-cell-dropdown-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Read-only (no edit permission): plain text, no chevron, no affordance. */
+.schedule-cell-dropdown-wrapper.read-only .schedule-cell-dropdown-select {
+    cursor: default;
+    padding-right: 8px;
+    background-image: none;
+}
+
+.schedule-cell-dropdown-wrapper.read-only .schedule-cell-dropdown-select:hover {
+    border-color: transparent;
+    background-color: transparent;
+}
+
+.schedule-cell-dropdown-wrapper.open .schedule-dropdown-menu {
+    display: block;
+}
+
+/* Clickable contact / organization chips (primary + involved columns). They open
+   the read-only details popup, so they read as links. */
+.schedule-spreadsheet tbody td.col-record {
+    max-width: 200px;
+}
+
+.schedule-spreadsheet tbody td.col-record-multi {
+    max-width: 280px;
+}
+
+.ss-record-link {
+    color: var(--text-primary, #1e293b);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.ss-record-link:hover {
+    text-decoration: underline;
+}
+
+.ss-record-link:focus-visible {
+    outline: 2px solid var(--accent-color, var(--accent, #2563eb));
+    outline-offset: 1px;
+}
+
+.ss-record-sep {
+    color: var(--text-tertiary, #9ca3af);
+}
+
+.schedule-spreadsheet tbody tr {
+    cursor: pointer;
+    transition: background 0.1s ease;
+    /* Items sit on white; hover/selection tints stay subtle (see below). */
+    background: #ffffff;
+}
+
+.schedule-spreadsheet tbody tr:hover {
+    /* ~50% of the previous gray tint, blended over white. */
+    background: color-mix(in srgb, var(--bg-secondary, #f8fafc) 50%, #ffffff);
+}
+
+.schedule-spreadsheet tbody tr.detail-active {
+    /* Halved accent tint (was 6%) over white so the selection is far subtler. */
+    background: color-mix(in srgb, var(--accent, #3b82f6) 3%, #ffffff);
+    box-shadow: inset 3px 0 0 var(--accent, #3b82f6);
+}
+
+/* Excel-style active cell cursor for keyboard navigation in spreadsheet view:
+   a crisp accent box drawn inside the cell (inset shadow keeps layout stable). */
+.schedule-spreadsheet tbody td.ss-cell-active {
+    box-shadow: inset 0 0 0 2px var(--accent-color, #2b5ea0);
+    background: color-mix(in srgb, var(--accent-color, #2b5ea0) 8%, #ffffff);
+}
+
+/* Plain-text cell content: truncates by default, but can spill into empty
+   neighbouring cells to its right (max-width set in JS to the own width plus
+   the empty space available, so it never overlaps a cell that has content). */
+.ss-cell-content {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.schedule-spreadsheet tbody td.ss-spill {
+    overflow: visible;
+}
+
+.schedule-spreadsheet tbody td.ss-spill .ss-cell-content {
+    width: max-content;
+}
+
+/* The cell being edited (its value shows under the floating editor). */
+.schedule-spreadsheet tbody td.ss-editing {
+    overflow: visible;
+}
+
+/* Floating editor that opens over the cell and grows to fit the whole value,
+   so long text (e.g. a description) is fully visible while typing. */
+.ss-cell-editor {
+    position: fixed;
+    z-index: 10000;
+    box-sizing: border-box;
+    max-width: 560px;
+    min-height: 28px;
+    padding: 6px 8px;
+    border: 1px solid var(--accent-color, #2b5ea0);
+    border-radius: 6px;
+    font: inherit;
+    line-height: 1.4;
+    color: var(--text-primary, #1e293b);
+    background: #ffffff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    resize: none;
+    overflow: hidden;
+    outline: none;
+}
+
+/* Status bar color via inset box-shadow on the status-bar cell */
+.schedule-spreadsheet tbody tr td.col-status-bar {
+    box-shadow: inset 4px 0 0 var(--text-tertiary, #9ca3af);
+}
+
+.schedule-spreadsheet tbody tr.status-received td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-received, #3b82f6); }
+.schedule-spreadsheet tbody tr.status-hold td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-hold, #f59e0b); }
+.schedule-spreadsheet tbody tr.status-referred td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-referred, #8b5cf6); }
+.schedule-spreadsheet tbody tr.status-fyied td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-fyied, #f97316); }
+.schedule-spreadsheet tbody tr.status-scheduling_in_progress td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-scheduling_in_progress, #14b8a6); }
+.schedule-spreadsheet tbody tr.status-scheduled td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-scheduled, #10b981); }
+.schedule-spreadsheet tbody tr.status-rsvped td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-rsvped, #06b6d4); }
+.schedule-spreadsheet tbody tr.status-regrets_sent td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-regrets_sent, #ef4444); }
+.schedule-spreadsheet tbody tr.status-ignored td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-ignored, #64748b); }
+.schedule-spreadsheet tbody tr.status-passed td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-passed, #6b7280); }
+.schedule-spreadsheet tbody tr.status-canceled td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-canceled, #6b7280); }
+.schedule-spreadsheet tbody tr.status-requires_hms_review td.col-status-bar { box-shadow: inset 4px 0 0 var(--status-requires_hms_review, #eab308); }
+
+/* Title + Status columns carry the row's status colour strongly: each status
+   row exposes --row-status (text) and --row-status-bg (tint), used below. */
+.schedule-spreadsheet tbody tr.status-received { --row-status: var(--status-received, #2b5ea0); --row-status-bg: var(--status-received-bg, rgba(43, 94, 160, 0.12)); }
+.schedule-spreadsheet tbody tr.status-hold { --row-status: var(--status-hold, #f97316); --row-status-bg: var(--status-hold-bg, rgba(249, 115, 22, 0.12)); }
+.schedule-spreadsheet tbody tr.status-referred { --row-status: var(--status-referred, #8b5cf6); --row-status-bg: var(--status-referred-bg, rgba(139, 92, 246, 0.12)); }
+.schedule-spreadsheet tbody tr.status-fyied { --row-status: var(--status-fyied, #f97316); --row-status-bg: var(--status-fyied-bg, rgba(249, 115, 22, 0.12)); }
+.schedule-spreadsheet tbody tr.status-scheduling_in_progress { --row-status: var(--status-scheduling_in_progress, #14b8a6); --row-status-bg: var(--status-scheduling_in_progress-bg, rgba(20, 184, 166, 0.12)); }
+.schedule-spreadsheet tbody tr.status-scheduled { --row-status: var(--status-scheduled, #22c55e); --row-status-bg: var(--status-scheduled-bg, rgba(34, 197, 94, 0.12)); }
+.schedule-spreadsheet tbody tr.status-rsvped { --row-status: var(--status-rsvped, #10b981); --row-status-bg: var(--status-rsvped-bg, rgba(16, 185, 129, 0.12)); }
+.schedule-spreadsheet tbody tr.status-regrets_sent { --row-status: var(--status-regrets_sent, #ef4444); --row-status-bg: var(--status-regrets_sent-bg, rgba(239, 68, 68, 0.12)); }
+.schedule-spreadsheet tbody tr.status-ignored { --row-status: var(--status-ignored, #64748b); --row-status-bg: var(--status-ignored-bg, rgba(100, 116, 139, 0.12)); }
+.schedule-spreadsheet tbody tr.status-passed { --row-status: var(--status-passed, #6b7280); --row-status-bg: var(--status-passed-bg, rgba(107, 114, 128, 0.12)); }
+.schedule-spreadsheet tbody tr.status-canceled { --row-status: var(--status-canceled, #ef4444); --row-status-bg: var(--status-canceled-bg, rgba(239, 68, 68, 0.12)); }
+.schedule-spreadsheet tbody tr.status-requires_hms_review { --row-status: var(--status-requires_hms_review, #eab308); --row-status-bg: var(--status-requires_hms_review-bg, rgba(234, 179, 8, 0.12)); }
+
+.schedule-spreadsheet tbody td.col-title {
+    color: var(--text-primary, #1e293b);
+    background: color-mix(in srgb, var(--row-status-bg, transparent) 25%, transparent);
+}
+.schedule-spreadsheet tbody td.col-title .ss-cell-content { color: inherit; }
+.schedule-spreadsheet tbody td.col-status {
+    background: color-mix(in srgb, var(--row-status-bg, transparent) 25%, transparent);
+}
+/* Keep the active-cell cursor visible over the status tint. */
+.schedule-spreadsheet tbody td.col-title.ss-cell-active,
+.schedule-spreadsheet tbody td.col-status.ss-cell-active {
+    background: color-mix(in srgb, var(--accent-color, #2b5ea0) 8%, #ffffff);
+}
+
+/* Status dropdown in spreadsheet — slightly smaller */
+.schedule-spreadsheet .schedule-status-dropdown-wrapper .schedule-card-status-select {
+    font-size: 12px;
+    padding: 3px 22px 3px 8px;
+    min-width: 90px;
+}
+
+/* Spreadsheet status dropdown colors — mirror .schedule-card.status-* rules */
+.schedule-spreadsheet tr.status-received .schedule-card-status-select {
+    color: var(--status-received, #2b5ea0);
+    border-color: var(--status-received, #2b5ea0);
+    background-color: var(--status-received-bg, rgba(43, 94, 160, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-hold .schedule-card-status-select {
+    color: var(--status-hold, #f97316);
+    border-color: var(--status-hold, #f97316);
+    background-color: var(--status-hold-bg, rgba(249, 115, 22, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-referred .schedule-card-status-select {
+    color: var(--status-referred, #8b5cf6);
+    border-color: var(--status-referred, #8b5cf6);
+    background-color: var(--status-referred-bg, rgba(139, 92, 246, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-fyied .schedule-card-status-select {
+    color: var(--status-fyied, #14b8a6);
+    border-color: var(--status-fyied, #14b8a6);
+    background-color: var(--status-fyied-bg, rgba(20, 184, 166, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-scheduling_in_progress .schedule-card-status-select {
+    color: var(--status-scheduling_in_progress, #14b8a6);
+    border-color: var(--status-scheduling_in_progress, #14b8a6);
+    background-color: var(--status-scheduling_in_progress-bg, rgba(20, 184, 166, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-scheduled .schedule-card-status-select {
+    color: var(--status-scheduled, #22c55e);
+    border-color: var(--status-scheduled, #22c55e);
+    background-color: var(--status-scheduled-bg, rgba(34, 197, 94, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-rsvped .schedule-card-status-select {
+    color: var(--status-rsvped, #10b981);
+    border-color: var(--status-rsvped, #10b981);
+    background-color: var(--status-rsvped-bg, rgba(16, 185, 129, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-regrets_sent .schedule-card-status-select {
+    color: var(--status-regrets_sent, #ef4444);
+    border-color: var(--status-regrets_sent, #ef4444);
+    background-color: var(--status-regrets_sent-bg, rgba(239, 68, 68, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-passed .schedule-card-status-select {
+    color: var(--status-passed, #6b7280);
+    border-color: var(--status-passed, #6b7280);
+    background-color: var(--status-passed-bg, rgba(107, 114, 128, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-canceled .schedule-card-status-select {
+    color: var(--status-canceled, #ef4444);
+    border-color: var(--status-canceled, #ef4444);
+    background-color: var(--status-canceled-bg, rgba(239, 68, 68, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+.schedule-spreadsheet tr.status-requires_hms_review .schedule-card-status-select {
+    color: var(--status-requires_hms_review, #eab308);
+    border-color: var(--status-requires_hms_review, #eab308);
+    background-color: var(--status-requires_hms_review-bg, rgba(20, 184, 166, 0.1));
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+
+/* Read-only in spreadsheet — no dropdown arrow */
+.schedule-spreadsheet .schedule-status-dropdown-wrapper.read-only .schedule-card-status-select {
+    background-image: none !important;
+    padding-right: 8px;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Responsive: hide toggle on mobile */
+@media (max-width: 768px) {
+    .schedule-view-toggle {
+        display: none;
+    }
+}
+
+/* Empty state — shown when no event is selected */
+.detail-panel-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--text-tertiary);
+    background: color-mix(in srgb, var(--bg-secondary) 50%, var(--bg-primary));
+}
+
+.detail-panel-empty-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--text-tertiary);
+    opacity: 0.4;
+    margin-bottom: 16px;
+}
+
+.detail-panel-empty-title {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0 0 4px 0;
+}
+
+.detail-panel-empty-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    margin: 0;
+}
+
+/* Recently viewed list in empty state — grey rounded box */
+.detail-panel-recent {
+    margin-top: 24px;
+    width: 100%;
+    max-width: 300px;
+    background: #f3f4f6;
+    border-radius: var(--radius-lg, 12px);
+    padding: 14px 16px;
+    max-height: 340px;
+    display: flex;
+    flex-direction: column;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.detail-panel-recent-title {
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin: 0 0 10px 0;
+    flex-shrink: 0;
+}
+
+.detail-panel-recent-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.detail-panel-recent-item {
+    display: flex;
+    align-items: center;
+    padding: 7px 10px;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    border-radius: var(--radius-md, 8px);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    line-height: 1.4;
+    gap: 8px;
+}
+
+.detail-panel-recent-item-title {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+.detail-panel-recent-date {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.detail-panel-recent-item:hover {
+    background: var(--bg-primary, white);
+    color: var(--text-primary);
+}
+
+/* Loading spinner inside panel */
+.detail-panel-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+.detail-panel-loading .spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Active card — selected in the detail panel. Mirrors the inbox row: the card
+   lifts up a little and a soft shadow wraps it, with a thin gray outline. No
+   color change. Rounded corners so the lifted card reads as a distinct chip
+   even when it sits in the middle of a joined day group. */
+.schedule-card.detail-active,
+.schedule-card.detail-active:hover {
+    background: var(--bg-primary);
+    transform: translateY(-2px);
+    border-radius: var(--radius-lg);
+    /* Gray ring on top/right/bottom only — the left edge stays clear so it
+       doesn't clash with the status color bar. */
+    border: 1.5px solid rgba(107, 114, 128, 0.45);
+    border-left: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 0 6px rgba(0, 0, 0, 0.08);
+    z-index: 1;
+}
+
+/* The status color bar widens as the card lifts (like the inbox row), and its
+   left corners round to follow the lifted card. */
+.schedule-card.detail-active .schedule-card-status-bar {
+    width: 8px;
+    border-top-left-radius: var(--radius-lg);
+    border-bottom-left-radius: var(--radius-lg);
+}
+
+/* =============================================================================
+   Print Styles
+   ============================================================================= */
+@media print {
+    .schedule-filter-sidebar,
+    .schedule-header-bar,
+    .schedule-detail-panel {
+        display: none !important;
+    }
+
+    .schedule-main-area {
+        margin: 0;
+    }
+
+    .schedule-card {
+        break-inside: avoid;
+    }
+}
+
+/* =============================================================================
+   Detail Panel Collapse / Restore
+   ============================================================================= */
+
+.schedule-list-detail-wrapper {
+    position: relative;
+}
+
+.schedule-detail-panel {
+    position: relative;
+}
+
+/* Square collapse button — matches footer button look, bottom-left of panel */
+.detail-panel-collapse-btn {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: white;
+    border: 1px solid var(--border-color, #e5e7eb);
+    color: var(--text-secondary, #6b7280);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    z-index: 5;
+    transition: all 0.15s ease;
+}
+
+.detail-panel-collapse-btn:hover {
+    background: var(--bg-secondary, #f8fafc);
+    color: var(--text-primary, #1f2937);
+    border-color: var(--text-tertiary, #9ca3af);
+}
+
+.detail-panel-collapse-btn svg {
+    display: block;
+}
+
+/* Make room for the collapse button so it doesn't overlap footer actions */
+.schedule-detail-panel.has-event .detail-panel-footer {
+    padding-left: 56px;
+}
+
+/* Collapsed state — panel slides closed */
+.schedule-list-detail-wrapper.detail-panel-collapsed .schedule-detail-panel {
+    flex: 0 0 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    border-left: none;
+    overflow: hidden;
+}
+
+/* Floating restore circle — bottom-right corner, visible only when collapsed */
+.detail-panel-restore-btn {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-primary, #ffffff);
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    color: var(--text-primary, #111827);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    z-index: 30;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.detail-panel-restore-btn:hover {
+    transform: scale(1.06);
+    background: var(--bg-secondary, #f9fafb);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+.detail-panel-restore-btn svg {
+    display: block;
+}
+
+.schedule-list-detail-wrapper.detail-panel-collapsed .detail-panel-restore-btn {
+    display: flex;
+}
+
+/* Below the popup breakpoint, the panel becomes a fullscreen overlay with its
+   own close (X) button — collapse/restore controls don't apply there. */
+@media (max-width: 1024px) {
+    .detail-panel-collapse-btn,
+    .detail-panel-restore-btn,
+    .schedule-list-detail-wrapper.detail-panel-collapsed .detail-panel-restore-btn {
+        display: none !important;
+    }
+    .schedule-detail-panel.has-event .detail-panel-footer {
+        padding-left: 16px;
+    }
+}
+
+
+/* =============================================================================
+   Dropdown chevron arrow (status badges) -- drawn via mask + currentColor so
+   it always matches the badge text color, including customized status colors.
+   ============================================================================= */
+.schedule-card-status-select::after,
+.schedule-custom-dropdown .schedule-dropdown-trigger::after,
+.detail-panel-status-dropdown-wrapper .detail-panel-status::after {
+    content: '';
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background-color: currentColor;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    pointer-events: none;
+}
+
+.schedule-card.read-only .schedule-card-status-select::after {
+    display: none;
+}

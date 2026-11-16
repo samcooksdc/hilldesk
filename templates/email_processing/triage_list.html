@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ingestion Triage{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h3 mb-1">Ingestion Triage</h1>
+            <p class="text-muted mb-0">
+                Messages the pipeline would not act on without a human decision
+                ({{ total_count }} item{{ total_count|pluralize }}).
+            </p>
+        </div>
+        <a href="{% url 'email_processing:divert_store' %}" class="btn btn-sm btn-outline-secondary">
+            Diverted mail
+        </a>
+    </div>
+
+    {% if lapsed_subscriptions %}
+    <div class="alert alert-danger py-2">
+        <strong>P1 — webhook subscription lapsed:</strong>
+        {% for sub in lapsed_subscriptions %}{{ sub.mailbox }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+        Mail keeps flowing via the reconciliation sweep, but delivery latency is degraded.
+        {% if lapsed_subscriptions.0.last_renewal_error %}
+        <div class="small mt-1">{{ lapsed_subscriptions.0.last_renewal_error|truncatechars:200 }}</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="d-flex gap-4 small text-muted mb-3">
+        <span>Ingested this week: <strong>{{ ingested_this_week }}</strong></span>
+        {% if webhook_enabled %}
+        <span {% if gap_count %}class="text-warning"{% endif %}>
+            Webhook gaps caught by sweep (7d): <strong>{{ gap_count }}</strong>
+        </span>
+        {% else %}
+        <span>Delivery mode: sweep-only (webhooks disabled)</span>
+        {% endif %}
+        {% for sub in subscriptions %}
+        <span>{{ sub.mailbox }} — last sweep
+            {% if sub.last_sweep_at %}{{ sub.last_sweep_at|timesince }} ago{% else %}never{% endif %}</span>
+        {% endfor %}
+    </div>
+
+    {% if items %}
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>When</th>
+                    <th>From</th>
+                    <th>Subject</th>
+                    <th>Reason</th>
+                    <th>Detail</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="text-nowrap">{{ item.when|date:"M j, g:i A" }}</td>
+                    <td>
+                        {% if item.raw %}{{ item.raw.sender_name|default:item.raw.sender }}{% else %}&mdash;{% endif %}
+                    </td>
+                    <td>{% if item.raw %}{{ item.raw.subject|default:"(no subject)"|truncatechars:70 }}{% elif item.record %}{{ item.record.subject|truncatechars:70 }}{% endif %}</td>
+                    <td>
+                        <span class="badge {% if 'auth' in item.reason %}bg-danger{% elif 'unknown_event' in item.reason %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                            {{ item.reason }}
+                        </span>
+                    </td>
+                    <td class="small text-muted">{{ item.detail|truncatechars:90 }}</td>
+                    <td class="text-end text-nowrap">
+                        {% if item.raw %}
+                        <form method="post" action="{% url 'email_processing:triage_extract_anyway' item.raw.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Extract anyway</button>
+                        </form>
+                        <form method="post" action="{% url 'email_processing:triage_divert' item.raw.id %}" class="d-inline"
+                              onsubmit="return confirm('Set this message aside?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Divert</button>
+                        </form>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                data-bs-toggle="collapse" data-bs-target="#source-{{ item.raw.id }}">
+                            Source
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if item.raw %}
+                <tr class="collapse" id="source-{{ item.raw.id }}">
+                    <td colspan="6">
+                        <div class="border rounded p-3 bg-body-tertiary small">
+                            <div class="mb-1"><strong>Message-ID:</strong> {{ item.raw.internet_message_id|default:"—" }}</div>
+                            <div class="mb-1"><strong>Mailbox:</strong> {{ item.raw.mailbox }} · <strong>Source:</strong> {{ item.raw.source }}</div>
+                            <pre class="mb-0 mt-2" style="white-space: pre-wrap;">{{ item.raw.body_text|default:item.raw.body_html|truncatechars:2000 }}</pre>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <h5>Nothing needs triage.</h5>
+        <p class="mb-0">Escalated messages (security flags, digests, bursts, unmatched cancellations) appear here.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

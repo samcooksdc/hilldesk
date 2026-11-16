@@ -1,0 +1,305 @@
+{% extends 'base.html' %}
+
+{% block title %}Roles & Permissions - HillDesk{% endblock %}
+
+{% block content %}
+<div class="role-management-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1>Roles &amp; Permissions</h1>
+            <p class="page-subtitle">Define roles and what they can do in {{ office.name }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'authentication:staff_profile_link' %}" class="btn btn-secondary">
+                Link Staff Profiles
+            </a>
+            <button type="button" class="btn btn-primary" onclick="openRoleModal('create-role-modal')">
+                + Create Role
+            </button>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="message message-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ============================ ROLES ============================ -->
+    <section class="section">
+        <h2 class="section-title">Roles</h2>
+        <div class="roles-grid">
+            {% for card in role_cards %}
+            <div class="role-def-card">
+                <div class="role-def-header">
+                    <span class="role-badge" style="background: {{ card.role.color }}1a; color: {{ card.role.color }};">
+                        {{ card.role.name }}
+                    </span>
+                    {% if card.role.is_admin %}
+                        <span class="lock-pill" title="Built-in, all permissions">🔒 Locked</span>
+                    {% elif card.role.is_system %}
+                        <span class="system-pill" title="Seeded default — editable">Default</span>
+                    {% endif %}
+                </div>
+
+                {% if card.role.description %}
+                <p class="role-def-desc">{{ card.role.description }}</p>
+                {% endif %}
+
+                <div class="role-perm-summary">
+                    {% for label in card.permission_labels %}
+                        <span class="perm-chip">{{ label }}</span>
+                    {% empty %}
+                        <span class="perm-chip perm-chip-none">No permissions</span>
+                    {% endfor %}
+                </div>
+
+                <div class="role-def-footer">
+                    <span class="user-count">{{ card.user_count }} user{{ card.user_count|pluralize }}</span>
+                    {% if card.role.is_editable %}
+                    <div class="role-def-actions">
+                        <button type="button" class="btn btn-small btn-secondary"
+                                onclick="openRoleModal('edit-role-modal-{{ card.role.id }}')">
+                            Edit
+                        </button>
+                        {% if card.user_count == 0 %}
+                        <form method="post" action="{% url 'authentication:role_delete' card.role.id %}"
+                              onsubmit="return confirm('Delete the &quot;{{ card.role.name }}&quot; role?');"
+                              style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-small btn-danger">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ============================ MEMBERS ============================ -->
+    <section class="section">
+        <h2 class="section-title">Members</h2>
+        <div class="users-table-container">
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Current Role</th>
+                        <th>Staff Profile</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in user_data %}
+                    <tr class="{% if item.is_current_user %}current-user{% endif %}">
+                        <td class="user-cell">
+                            <span class="user-name">{{ item.user.get_full_name|default:item.user.username }}</span>
+                            <span class="user-username">@{{ item.user.username }}</span>
+                            {% if item.is_current_user %}<span class="you-badge">You</span>{% endif %}
+                        </td>
+                        <td>{{ item.user.email|default:"-" }}</td>
+                        <td>
+                            {% if item.user.office_role %}
+                            <span class="role-badge"
+                                  style="background: {{ item.user.office_role.color }}1a; color: {{ item.user.office_role.color }};">
+                                {{ item.user.get_role_display_name }}
+                            </span>
+                            {% else %}
+                            <span class="no-link">{{ item.user.get_role_display_name }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.user.staff_profile %}
+                                <span class="staff-link">{{ item.user.staff_profile.name }}</span>
+                            {% else %}
+                                <span class="no-link">Not linked</span>
+                            {% endif %}
+                        </td>
+                        <td class="actions-cell">
+                            <form method="post" class="role-form">
+                                {% csrf_token %}
+                                {{ item.role_form.user_id }}
+                                <div class="role-select-group">
+                                    {{ item.role_form.role }}
+                                    <button type="submit" class="btn btn-small btn-primary">Update</button>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="empty-state">No users found in this office.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- ============================ CREATE ROLE MODAL ============================ -->
+<div class="role-modal-overlay" id="create-role-modal">
+    <div class="role-modal">
+        <div class="role-modal-header">
+            <h3>Create Role</h3>
+            <button type="button" class="modal-close" onclick="closeRoleModal('create-role-modal')">&times;</button>
+        </div>
+        <form method="post" action="{% url 'authentication:role_create' %}">
+            {% csrf_token %}
+            {% include 'authentication/_role_form_fields.html' with role=None permission_groups=permission_groups %}
+            <div class="role-modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRoleModal('create-role-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Role</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================ EDIT ROLE MODALS ============================ -->
+{% for card in role_cards %}
+{% if card.role.is_editable %}
+<div class="role-modal-overlay" id="edit-role-modal-{{ card.role.id }}">
+    <div class="role-modal">
+        <div class="role-modal-header">
+            <h3>Edit Role — {{ card.role.name }}</h3>
+            <button type="button" class="modal-close" onclick="closeRoleModal('edit-role-modal-{{ card.role.id }}')">&times;</button>
+        </div>
+        <form method="post" action="{% url 'authentication:role_edit' card.role.id %}">
+            {% csrf_token %}
+            {% include 'authentication/_role_form_fields.html' with role=card.role permission_groups=permission_groups %}
+            <div class="role-modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeRoleModal('edit-role-modal-{{ card.role.id }}')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<script>
+function openRoleModal(id) {
+    document.getElementById(id).classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeRoleModal(id) {
+    document.getElementById(id).classList.remove('open');
+    document.body.style.overflow = '';
+}
+// Close on overlay click
+document.querySelectorAll('.role-modal-overlay').forEach(function (overlay) {
+    overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeRoleModal(overlay.id);
+    });
+});
+</script>
+
+<style>
+.role-management-container { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+.page-header h1 { font-size: 1.75rem; font-weight: 600; margin-bottom: 0.25rem; }
+.page-subtitle { color: var(--text-secondary, #666); }
+.header-actions { display: flex; gap: 0.5rem; }
+
+.section { margin-bottom: 2.5rem; }
+.section-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; }
+
+/* Roles grid */
+.roles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+.role-def-card {
+    background: var(--bg-primary, #fff);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 10px; padding: 1.1rem 1.25rem;
+    display: flex; flex-direction: column; gap: 0.75rem;
+}
+.role-def-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.role-def-desc { font-size: 0.85rem; color: var(--text-secondary, #666); margin: 0; }
+.role-perm-summary { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.perm-chip {
+    font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: 999px;
+    background: var(--bg-secondary, #f1f5f9); color: var(--text-secondary, #475569);
+}
+.perm-chip-none { font-style: italic; }
+.role-def-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 0.5rem; }
+.user-count { font-size: 0.8rem; color: var(--text-secondary, #888); }
+.role-def-actions { display: flex; gap: 0.4rem; }
+.lock-pill, .system-pill { font-size: 0.7rem; padding: 0.12rem 0.5rem; border-radius: 999px; }
+.lock-pill { background: rgba(100,116,139,0.12); color: #475569; }
+.system-pill { background: rgba(37,99,235,0.1); color: #2563eb; }
+
+/* Badges */
+.role-badge { display: inline-block; padding: 0.25rem 0.625rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+
+/* Users table */
+.users-table-container { background: var(--bg-primary, #fff); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+.users-table { width: 100%; border-collapse: collapse; }
+.users-table th, .users-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color, #e0e0e0); }
+.users-table th { background: var(--bg-secondary, #f5f5f5); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.025em; }
+.users-table tbody tr:hover { background: var(--bg-hover, #f9f9f9); }
+.users-table tbody tr.current-user { background: rgba(37, 99, 235, 0.04); }
+.user-cell { display: flex; flex-direction: column; gap: 0.125rem; }
+.user-name { font-weight: 500; }
+.user-username { font-size: 0.85rem; color: var(--text-secondary, #888); }
+.you-badge { display: inline-block; background: var(--accent-color, #2563eb); color: #fff; font-size: 0.7rem; padding: 0.125rem 0.375rem; border-radius: 4px; margin-left: 0.5rem; }
+.staff-link { color: var(--text-primary, #333); }
+.no-link { color: var(--text-secondary, #888); font-style: italic; }
+.actions-cell { min-width: 220px; }
+.role-form { margin: 0; }
+.role-select-group { display: flex; gap: 0.5rem; align-items: center; }
+.role-select-group select { padding: 0.375rem 0.75rem; border: 1px solid var(--border-color, #d0d0d0); border-radius: 4px; font-size: 0.9rem; }
+
+/* Buttons */
+.btn { padding: 0.5rem 1rem; border-radius: 4px; font-weight: 500; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block; border: none; }
+.btn-small { padding: 0.375rem 0.75rem; font-size: 0.85rem; }
+.btn-primary { background: var(--accent-color, #2563eb); color: #fff; }
+.btn-primary:hover { background: var(--accent-color-hover, #1d4ed8); }
+.btn-secondary { background: transparent; color: var(--text-secondary, #666); border: 1px solid var(--border-color, #d0d0d0); }
+.btn-secondary:hover { background: var(--bg-secondary, #f5f5f5); }
+.btn-danger { background: transparent; color: #dc2626; border: 1px solid rgba(220,38,38,0.4); }
+.btn-danger:hover { background: rgba(220,38,38,0.08); }
+
+.empty-state { text-align: center; color: var(--text-secondary, #888); padding: 2rem !important; }
+.messages-container { margin-bottom: 1.5rem; }
+.message { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 0.5rem; }
+.message-success { background: rgba(34,197,94,0.1); color: #15803d; border: 1px solid rgba(34,197,94,0.2); }
+.message-error { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.2); }
+.message-warning { background: rgba(245,158,11,0.1); color: #b45309; border: 1px solid rgba(245,158,11,0.2); }
+
+/* Modal */
+.role-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    z-index: 1000; align-items: flex-start; justify-content: center; padding: 3rem 1rem; overflow-y: auto;
+}
+.role-modal-overlay.open { display: flex; }
+.role-modal {
+    background: var(--bg-primary, #fff); border-radius: 12px; width: 100%; max-width: 640px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.role-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color, #e0e0e0); }
+.role-modal-header h3 { margin: 0; font-size: 1.15rem; font-weight: 600; }
+.modal-close { background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer; color: var(--text-secondary, #888); }
+.role-modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1.25rem 1.5rem; border-top: 1px solid var(--border-color, #e0e0e0); }
+
+/* Role form fields */
+.role-form-body { padding: 1.5rem; }
+.form-row { margin-bottom: 1.25rem; }
+.form-row label.field-label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; }
+.form-row input[type="text"], .form-row textarea {
+    width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color, #d0d0d0);
+    border-radius: 6px; font-size: 0.9rem; font-family: inherit;
+}
+.form-row input[type="color"] { width: 48px; height: 32px; padding: 2px; border: 1px solid var(--border-color, #d0d0d0); border-radius: 6px; cursor: pointer; }
+.perm-group { margin-bottom: 1.1rem; }
+.perm-group-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary, #64748b); margin-bottom: 0.5rem; }
+.perm-option { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.45rem 0.5rem; border-radius: 6px; }
+.perm-option:hover { background: var(--bg-secondary, #f8fafc); }
+.perm-option input[type="checkbox"] { margin-top: 0.2rem; }
+.perm-option-text { display: flex; flex-direction: column; }
+.perm-option-label { font-size: 0.88rem; font-weight: 500; }
+.perm-option-help { font-size: 0.78rem; color: var(--text-secondary, #888); }
+</style>
+{% endblock %}

@@ -1,0 +1,6214 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * Event Editing Modal V2 - Redesigned Interface
+ * Matches design mockup with clean, modern styling
+ */
+
+/* ==========================================================================
+   1. CSS Variables (Design Tokens)
+   ========================================================================== */
+
+:root {
+    /* Modal-specific variables */
+    --v2-modal-border-radius: 12px;
+    --v2-modal-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+    --v2-modal-max-width: 560px;
+    --v2-modal-padding: 24px;
+
+    /* Spacing scale */
+    --v2-space-xs: 4px;
+    --v2-space-sm: 8px;
+    --v2-space-md: 12px;
+    --v2-space-lg: 16px;
+    --v2-space-xl: 24px;
+
+    /* Form elements */
+    --v2-input-height: 40px;
+    --v2-input-radius: 8px;
+    --v2-input-border: 1px solid var(--border-color, #e2e8f0);
+    --v2-input-bg: var(--bg-primary, #ffffff);
+
+    /* Typography */
+    --v2-title-size: 18px;
+    --v2-label-size: 11px;
+    --v2-body-size: 14px;
+    --v2-small-size: 13px;
+
+    /* Colors aligned with calendar design system - use theme accent color */
+    --v2-accent: var(--accent-color, #2b5ea0);
+    --v2-accent-hover: var(--accent-color-hover, #204a80);
+    --v2-accent-light: var(--accent-color-light, rgba(43, 94, 160, 0.1));
+    --v2-success: #22c55e;
+    --v2-success-light: rgba(34, 197, 94, 0.1);
+    --v2-important: #ef4444;
+    --v2-important-light: rgba(239, 68, 68, 0.1);
+    --v2-warning: #f59e0b;
+    --v2-text-primary: #1e293b;
+    --v2-text-secondary: #64748b;
+    --v2-text-tertiary: #94a3b8;
+    --v2-bg-primary: #ffffff;
+    --v2-bg-secondary: #f8fafc;
+    --v2-bg-tertiary: #f1f5f9;
+    --v2-border-color: #e2e8f0;
+    --v2-border-hover: #cbd5e1;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+    --v2-text-primary: #f1f5f9;
+    --v2-text-secondary: #cbd5e1;
+    --v2-text-tertiary: #94a3b8;
+    --v2-bg-primary: #1e293b;
+    --v2-bg-secondary: #0f172a;
+    --v2-bg-tertiary: #334155;
+    --v2-border-color: #334155;
+    --v2-border-hover: #475569;
+    --v2-modal-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================================================
+   2. Modal Overlay and Container
+   ========================================================================== */
+
+.v2-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.v2-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.v2-modal-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: var(--v2-modal-max-width);
+    max-height: 90vh;
+    /* Use accent color for all native form controls (checkboxes, date pickers, etc.) */
+    accent-color: var(--v2-accent);
+    color-scheme: light;
+    background: var(--v2-bg-primary);
+    border-radius: var(--v2-modal-border-radius);
+    box-shadow: var(--v2-modal-shadow);
+    border: 1px solid var(--v2-border-color);
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.2s ease;
+    /* Static UI text (labels, buttons, headers, dropdown chrome) is not
+       selectable. Form inputs and email content opt back in below. */
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* The shell receives focus on open (so focus can't sit behind the overlay) but
+   is not an interactive control, so it shows no focus ring. */
+.v2-modal-container:focus {
+    outline: none;
+}
+
+/* Re-enable text selection for editable values and email content */
+.v2-modal-container input,
+.v2-modal-container textarea,
+.v2-modal-container [contenteditable="true"],
+.v2-modal-container .v2-email-content,
+.v2-modal-container .v2-email-content * {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.v2-modal-overlay.active .v2-modal-container {
+    transform: scale(1);
+}
+
+/* When email panel is visible - expand to split view */
+.v2-modal-container.email-visible {
+    max-width: min(95vw, 2400px);
+    flex-direction: row;
+}
+
+/* Transition only when showing email (added via JS) */
+.v2-modal-container.email-transitioning {
+    transition: max-width 0.3s ease;
+}
+
+/* Main panel stays same size when email is shown */
+.v2-modal-container.email-visible .v2-main-panel {
+    flex: 0 0 var(--v2-modal-max-width);
+    min-width: var(--v2-modal-max-width);
+    max-width: var(--v2-modal-max-width);
+}
+
+.v2-main-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0; /* Required for proper flex scroll behavior */
+    overflow: hidden;
+}
+
+/* Form element - must be flex to allow panel-content to scroll */
+#v2-event-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0; /* Critical for flex scroll behavior */
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   2b. Loading Skeleton
+   Chrome placeholder shown while the editing interface is fetched. Reuses
+   .v2-modal-overlay / .v2-modal-container for size, position, and backdrop;
+   the shimmer blocks use the global .skeleton class from components.css.
+   ========================================================================== */
+/* Match the loaded modal's footprint: desktop fills to 90vh (the height a
+   content-full modal reaches), mobile is full-screen like the real modal. */
+.v2-skeleton-overlay .v2-modal-container {
+    height: 90vh;
+}
+
+.v2-skeleton-panel {
+    background: var(--v2-bg-primary);
+}
+
+.v2-skel-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--v2-space-md);
+    padding: calc(var(--v2-space-xl) + var(--v2-space-sm)) var(--v2-space-xl) var(--v2-space-md);
+    border-bottom: 1px solid var(--v2-border-color);
+    flex-shrink: 0;
+}
+
+.v2-skel-header-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-md);
+}
+
+.v2-skel-title { height: 24px; width: 62%; border-radius: 6px; }
+.v2-skel-org { height: 16px; width: 40%; border-radius: 5px; }
+.v2-skel-close { flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px; }
+
+.v2-skel-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--v2-space-xl);
+    background: var(--v2-bg-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-lg);
+}
+
+.v2-skel-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-sm);
+}
+
+.v2-skel-label { height: 11px; width: 72px; border-radius: 4px; }
+.v2-skel-input { height: var(--v2-input-height); width: 100%; border-radius: var(--v2-input-radius); }
+
+.v2-skel-input-row { display: flex; gap: var(--v2-space-md); }
+.v2-skel-input-row .v2-skel-input { flex: 1; }
+
+.v2-skel-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--v2-space-md);
+    padding: var(--v2-space-lg) var(--v2-space-xl);
+    border-top: 1px solid var(--v2-border-color);
+    background: var(--v2-bg-primary);
+    flex-shrink: 0;
+}
+
+.v2-skel-btn { height: 40px; flex: 1; border-radius: var(--v2-input-radius); }
+
+/* ==========================================================================
+   3. Header Section
+   ========================================================================== */
+
+.v2-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--v2-space-md);
+    padding: calc(var(--v2-space-xl) + var(--v2-space-sm)) var(--v2-space-xl) var(--v2-space-md);
+    border-bottom: 1px solid var(--v2-border-color);
+    background: var(--v2-bg-primary);
+    flex-shrink: 0; /* Don't shrink - let panel-content scroll */
+}
+
+/* Status-colored modal border - REMOVED per user request */
+/* Modal now uses default border color */
+
+.v2-header-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--v2-bg-tertiary);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--v2-text-secondary);
+    flex-shrink: 0;
+}
+
+.v2-header-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.v2-header-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-xs);
+}
+
+/* Computed datetime line below the org input — matches the schedule side
+   panel's "datetime · relative" typography, with a calendar icon prefix. */
+.v2-header-meta {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--v2-space-sm);
+}
+
+.v2-header-meta:empty {
+    display: none;
+}
+
+.v2-header-meta-datetime {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: var(--v2-body-size);
+    font-weight: 600;
+    color: var(--v2-text-primary);
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 2px 4px;
+    margin-left: -4px;
+    transition: background-color 0.15s ease;
+}
+
+.v2-header-meta-datetime:hover {
+    background-color: var(--v2-bg-tertiary);
+}
+
+.v2-header-meta-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    margin-top: 3px;
+    color: var(--v2-text-tertiary);
+}
+
+.v2-header-meta-relative {
+    font-size: var(--v2-small-size);
+    font-weight: 400;
+    color: var(--v2-text-tertiary);
+}
+
+.v2-title-input {
+    width: 100%;
+    font-size: var(--v2-title-size);
+    font-weight: 600;
+    color: var(--v2-text-primary);
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.v2-title-input::placeholder {
+    color: var(--v2-text-tertiary);
+}
+
+.v2-title-input:focus {
+    outline: none;
+}
+
+.v2-org-row {
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    min-width: 0;
+    width: 100%;
+}
+
+/* Ensure review wrapper in org-row expands properly */
+.v2-org-row .v2-review-field-wrapper {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+}
+
+/* Close button in header */
+.v2-header .v2-close-btn {
+    flex-shrink: 0;
+}
+
+.v2-org-icon {
+    color: var(--v2-text-tertiary);
+    flex-shrink: 0;
+}
+
+.v2-org-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.v2-org-input {
+    flex: 1;
+    width: 100%;
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-secondary);
+    border: none;
+    background: transparent;
+    padding: 0;
+}
+
+.v2-org-input::placeholder {
+    color: var(--v2-text-tertiary);
+}
+
+.v2-org-input:focus {
+    outline: none;
+}
+
+.v2-close-btn {
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--v2-text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.v2-close-btn:hover {
+    background: var(--v2-bg-tertiary);
+    color: var(--v2-text-primary);
+}
+
+.v2-close-btn:focus {
+    outline: none;
+}
+
+.v2-close-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Header actions wrapper (close + more menu) */
+.v2-header-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+/* More menu button and dropdown */
+.v2-more-menu {
+    position: relative;
+}
+
+.v2-more-btn {
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--v2-text-tertiary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.v2-more-btn:hover {
+    background: var(--v2-bg-tertiary);
+    color: var(--v2-text-primary);
+}
+
+.v2-more-btn:focus {
+    outline: none;
+}
+
+.v2-more-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.v2-more-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    min-width: 160px;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+.v2-more-menu.open .v2-more-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.v2-more-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    font-size: 14px;
+    color: var(--v2-text-primary);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.v2-more-item:first-child {
+    border-radius: 7px 7px 0 0;
+}
+
+.v2-more-item:last-child {
+    border-radius: 0 0 7px 7px;
+}
+
+.v2-more-item:only-child {
+    border-radius: 7px;
+}
+
+.v2-more-item:hover {
+    background: var(--v2-bg-tertiary);
+}
+
+.v2-more-item svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.v2-more-item-danger {
+    color: var(--v2-important);
+}
+
+.v2-more-item-danger:hover {
+    background: var(--v2-important-light);
+}
+
+/* ==========================================================================
+   4. Time Range Section
+   ========================================================================== */
+
+.v2-time-section {
+    padding: var(--v2-space-sm) var(--v2-space-xl) var(--v2-space-lg);
+    border-bottom: 1px solid var(--v2-border-color);
+    background: var(--v2-bg-primary);
+    flex-shrink: 0; /* Don't shrink - let panel-content scroll */
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-md);
+}
+
+/* When placed at the top of the Event Details tab, .v2-panel-content already
+   provides outer padding and the gray background — drop this section's own
+   chrome and just keep the internal grid + a divider before the form fields. */
+.v2-tab-panel > .v2-time-section {
+    padding: 0 0 var(--v2-space-lg);
+    margin-bottom: var(--v2-space-lg);
+    background: transparent;
+}
+
+/* Date row - full width */
+.v2-date-row {
+    width: 100%;
+}
+
+/* Time + Toggle row: two equal input columns + fixed accessory column.
+   Matches the date row's grid so the four input boxes align in two clean
+   columns with the same width. */
+.v2-time-toggle-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 150px;
+    gap: var(--v2-space-sm);
+    align-items: center;
+}
+
+.v2-time-content {
+    grid-column: 1 / span 2;
+}
+
+/* Time content area (left 2/3) */
+.v2-time-content {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Toggle column — horizontally centered in the 150px third column,
+   bottom-aligned so it sits on the same baseline as the time inputs
+   (which use align-items: end in their inner grid). */
+.v2-toggle-column {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: end;
+    padding-bottom: 8px;
+}
+
+.v2-time-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--v2-space-lg);
+}
+
+.v2-time-label {
+    font-size: var(--v2-body-size);
+    font-weight: 500;
+    color: var(--v2-text-secondary);
+}
+
+/* Toggle Buttons Group */
+.v2-toggle-group {
+    display: inline-flex;
+    background: var(--v2-bg-tertiary);
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.v2-toggle-btn {
+    padding: 6px 14px;
+    font-size: var(--v2-small-size);
+    font-weight: 500;
+    color: var(--v2-text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.v2-toggle-btn:hover:not(.active) {
+    color: var(--v2-text-primary);
+}
+
+.v2-toggle-btn.active {
+    background: var(--v2-bg-primary);
+    color: var(--v2-text-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Time Grid — date row uses this with the third column matching the
+   time row's accessory column so all four input boxes share width. */
+.v2-time-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 150px;
+    gap: var(--v2-space-sm);
+    align-items: end;
+}
+
+.v2-time-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-xs);
+}
+
+/* Longer than a day column - positioned to the right */
+.v2-longer-day-column {
+    display: flex;
+    align-items: center;
+    padding-bottom: 8px;
+}
+
+.v2-longer-day-column .v2-checkbox-row {
+    margin-top: 0;
+}
+
+/* "Longer than a day" and "Repeats" stack in the date row's accessory
+   column, bottom-aligned with the date inputs. */
+.v2-longer-day-column {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 4px;
+    padding-bottom: 0;
+    min-height: var(--v2-input-height);
+}
+
+.v2-longer-day-column.hidden {
+    display: none;
+}
+
+/* Greyed out while human review is pending / once a series is active */
+.v2-checkbox-row.is-disabled {
+    opacity: 0.5;
+}
+
+.v2-checkbox-row.is-disabled .v2-checkbox,
+.v2-checkbox-row.is-disabled .v2-checkbox-label {
+    cursor: not-allowed;
+}
+
+/* =========================================================================
+   Recurrence section (under the time row, shown when "Repeats" is checked)
+   ========================================================================= */
+.v2-recurrence-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-md);
+    padding: var(--v2-space-md) var(--v2-space-lg);
+    background: var(--v2-bg-secondary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: var(--v2-input-radius);
+}
+
+.v2-recurrence-section[hidden] {
+    display: none;
+}
+
+.v2-recurrence-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-md);
+}
+
+.v2-recurrence-editor.is-disabled {
+    opacity: 0.6;
+}
+
+.v2-recur-row {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--v2-space-md);
+}
+
+.v2-recur-row[hidden] {
+    display: none;
+}
+
+.v2-recur-row-ends {
+    align-items: start;
+}
+
+.v2-recur-row-ends > .v2-column-label {
+    padding-top: 13px;
+}
+
+.v2-recur-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+}
+
+.v2-date-input.v2-recur-interval {
+    width: 72px;
+}
+
+.v2-date-input.v2-recur-freq {
+    width: 128px;
+    cursor: pointer;
+}
+
+.v2-date-input.v2-recur-monthly {
+    width: auto;
+    min-width: 220px;
+    max-width: 100%;
+    cursor: pointer;
+}
+
+/* Weekday toggles */
+.v2-recur-days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.v2-recur-day {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 9999px;
+    border: 1px solid var(--v2-border-color);
+    background: var(--v2-bg-primary);
+    color: var(--v2-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.v2-recur-day:hover:not(:disabled) {
+    border-color: var(--v2-accent);
+    color: var(--v2-text-primary);
+}
+
+.v2-recur-day[aria-pressed="true"] {
+    background: var(--v2-accent);
+    border-color: var(--v2-accent);
+    color: #fff;
+}
+
+.v2-recur-day:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--v2-accent-light);
+}
+
+.v2-recur-day:disabled {
+    cursor: not-allowed;
+}
+
+/* Ends: radio + inline field per option */
+.v2-recur-ends {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-sm);
+}
+
+.v2-recur-end-option {
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    margin: 0;
+    cursor: pointer;
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+}
+
+.v2-recur-end-radio {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--v2-accent);
+    cursor: pointer;
+}
+
+.v2-recur-end-text {
+    min-width: 40px;
+}
+
+.v2-date-input.v2-recur-until {
+    width: 170px;
+}
+
+.v2-date-input.v2-recur-count {
+    width: 80px;
+}
+
+.v2-recur-count-unit {
+    color: var(--v2-text-secondary);
+}
+
+/* The unselected end option fades back */
+.v2-recur-end-option.is-inactive .v2-date-input {
+    color: var(--v2-text-tertiary);
+}
+
+.v2-recurrence-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--v2-space-md);
+    padding-top: var(--v2-space-md);
+    border-top: 1px solid var(--v2-border-color);
+}
+
+.v2-recurrence-summary {
+    flex: 1 1 auto;
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-secondary);
+    min-width: 0;
+}
+
+.v2-recurrence-summary.is-error {
+    color: var(--v2-important);
+}
+
+.v2-recurrence-footer .v2-recurrence-confirm {
+    flex: 0 0 auto;
+    width: auto;
+}
+
+.v2-recurrence-confirm.v2-btn-disabled,
+.v2-recurrence-confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Two-column time grid */
+.v2-time-grid-2col {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Single Event Times Section */
+.v2-single-event-times {
+    /* No extra margin - contained in time-content */
+}
+
+.v2-single-event-times .v2-time-grid {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Time Range Details Section */
+.v2-time-range-details {
+    /* No extra margin - contained in time-content */
+}
+
+.v2-time-range-details .v2-field {
+    margin-bottom: 0;
+}
+
+.v2-time-range-details .v2-textarea {
+    min-height: auto;
+    resize: none;
+}
+
+/* Hidden utility class */
+.hidden {
+    display: none !important;
+}
+
+.v2-column-label {
+    font-size: var(--v2-label-size);
+    font-weight: 600;
+    color: var(--v2-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.v2-date-input-wrapper,
+.v2-time-input-wrapper {
+    position: relative;
+}
+
+.v2-date-input-wrapper .v2-input-icon,
+.v2-time-input-wrapper .v2-input-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--v2-text-tertiary);
+    pointer-events: none;
+}
+
+.v2-date-input-wrapper .v2-input-icon svg,
+.v2-time-input-wrapper .v2-input-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.v2-date-input,
+.v2-time-input-field {
+    width: 100%;
+    height: var(--v2-input-height);
+    padding: 0 var(--v2-space-md);
+    border: var(--v2-input-border);
+    border-radius: var(--v2-input-radius);
+    background: var(--v2-bg-primary);
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    /* Use accent color for native picker elements */
+    accent-color: var(--v2-accent);
+    color-scheme: light;
+}
+
+.v2-date-input:hover,
+.v2-time-input-field:hover {
+    border-color: var(--v2-accent);
+}
+
+.v2-date-input:focus,
+.v2-time-input-field:focus {
+    outline: none;
+    border-color: var(--v2-accent);
+    box-shadow: 0 0 0 3px var(--v2-accent-light);
+}
+
+.v2-date-input:disabled,
+.v2-time-input-field:disabled {
+    background: var(--v2-bg-tertiary);
+    color: var(--v2-text-tertiary);
+    cursor: not-allowed;
+}
+
+/* Style the calendar/time picker icon */
+.v2-date-input::-webkit-calendar-picker-indicator,
+.v2-time-input-field::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    padding: 4px;
+    margin-right: -4px;
+    border-radius: 4px;
+    opacity: 0.6;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.v2-date-input::-webkit-calendar-picker-indicator:hover,
+.v2-time-input-field::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    background-color: var(--v2-accent-light);
+}
+
+/* Style the date/time picker popup (Chrome/Edge) */
+.v2-date-input::-webkit-datetime-edit,
+.v2-time-input-field::-webkit-datetime-edit {
+    padding: 0;
+}
+
+.v2-date-input::-webkit-datetime-edit-fields-wrapper,
+.v2-time-input-field::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+}
+
+.v2-date-input::-webkit-datetime-edit-text {
+    color: var(--v2-text-tertiary);
+    padding: 0 2px;
+}
+
+.v2-date-input::-webkit-datetime-edit-month-field,
+.v2-date-input::-webkit-datetime-edit-day-field,
+.v2-date-input::-webkit-datetime-edit-year-field,
+.v2-time-input-field::-webkit-datetime-edit-hour-field,
+.v2-time-input-field::-webkit-datetime-edit-minute-field,
+.v2-time-input-field::-webkit-datetime-edit-ampm-field {
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.v2-date-input::-webkit-datetime-edit-month-field:focus,
+.v2-date-input::-webkit-datetime-edit-day-field:focus,
+.v2-date-input::-webkit-datetime-edit-year-field:focus,
+.v2-time-input-field::-webkit-datetime-edit-hour-field:focus,
+.v2-time-input-field::-webkit-datetime-edit-minute-field:focus,
+.v2-time-input-field::-webkit-datetime-edit-ampm-field:focus {
+    background-color: var(--v2-accent);
+    color: white;
+    outline: none;
+}
+
+/* Longer than a day checkbox */
+.v2-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    white-space: nowrap;
+}
+
+.v2-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--v2-accent);
+    cursor: pointer;
+}
+
+.v2-checkbox-label {
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Time Display Row */
+.v2-time-display {
+    margin-top: var(--v2-space-lg);
+    padding: var(--v2-space-md);
+    background: var(--v2-bg-secondary);
+    border-radius: var(--v2-input-radius);
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+}
+
+.v2-time-display-icon {
+    color: var(--v2-text-tertiary);
+}
+
+.v2-time-display-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.v2-time-display-text {
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-secondary);
+}
+
+/* ==========================================================================
+   5. Tab Navigation
+   ========================================================================== */
+
+.v2-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--v2-border-color);
+    background: var(--v2-bg-primary);
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    position: relative;
+    z-index: 1;
+}
+
+.v2-tab {
+    flex: 1;
+    padding: var(--v2-space-md) var(--v2-space-lg);
+    font-size: var(--v2-body-size);
+    font-weight: 500;
+    color: var(--v2-text-secondary);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.v2-tab:hover {
+    color: var(--v2-text-primary);
+    background: var(--v2-bg-secondary);
+}
+
+.v2-tab.active {
+    color: var(--v2-accent);
+    border-bottom-color: var(--v2-accent);
+}
+
+/* ==========================================================================
+   6. Panel Content (Form Area)
+   ========================================================================== */
+
+.v2-panel-content {
+    flex: 1;
+    min-height: 0; /* Required for proper flex scroll behavior */
+    overflow-y: auto;
+    padding: var(--v2-space-xl);
+    background-color: var(--v2-bg-secondary); /* Lightest gray background */
+    /* Scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--v2-border-color) transparent;
+    /* Subtle left-edge shadow to suggest depth where the tabs meet the
+       scrollable form area. Stays out of the way of the form fields. */
+    box-shadow: inset 8px 0 8px -8px rgba(15, 23, 42, 0.08);
+}
+
+.v2-panel-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.v2-panel-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.v2-panel-content::-webkit-scrollbar-thumb {
+    background: var(--v2-border-color);
+    border-radius: 4px;
+}
+
+.v2-panel-content::-webkit-scrollbar-thumb:hover {
+    background: var(--v2-border-hover);
+}
+
+/* Inactive tab panels are fully removed from layout — modal height stays
+   stable across tabs via a JS-managed min-height on .v2-panel-content. */
+.v2-tab-panel {
+    display: none;
+}
+
+.v2-tab-panel.active {
+    display: block;
+}
+
+/* Form Fields */
+.v2-field {
+    margin-bottom: var(--v2-space-lg);
+}
+
+.v2-field:last-child {
+    margin-bottom: 0;
+}
+
+.v2-field-label {
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    font-size: var(--v2-label-size);
+    font-weight: 600;
+    color: var(--v2-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--v2-space-sm);
+}
+
+.v2-field-icon {
+    color: var(--v2-text-tertiary);
+}
+
+.v2-field-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Fix for SVG elements with v2-field-icon class applied directly */
+svg.v2-field-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.v2-input {
+    width: 100%;
+    height: var(--v2-input-height);
+    padding: 0 var(--v2-space-md);
+    border: var(--v2-input-border);
+    border-radius: var(--v2-input-radius);
+    background: var(--v2-bg-primary);
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.v2-input:focus {
+    outline: none;
+    border-color: var(--v2-accent);
+    box-shadow: 0 0 0 3px var(--v2-accent-light);
+}
+
+.v2-input::placeholder {
+    color: var(--v2-text-tertiary);
+}
+
+/* Select with icon */
+.v2-select-wrapper {
+    position: relative;
+}
+
+.v2-select-wrapper .v2-select-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--v2-text-tertiary);
+    pointer-events: none;
+}
+
+.v2-select-wrapper .v2-select-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.v2-select {
+    width: 100%;
+    height: var(--v2-input-height);
+    padding: 0 var(--v2-space-md);
+    padding-right: 36px;
+    border: var(--v2-input-border);
+    border-radius: var(--v2-input-radius);
+    background: var(--v2-bg-primary);
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.v2-select:focus {
+    outline: none;
+    border-color: var(--v2-accent);
+    box-shadow: 0 0 0 3px var(--v2-accent-light);
+}
+
+.v2-select-wrapper .v2-select {
+    padding-left: 38px;
+}
+
+/* ==========================================================================
+   Custom Dropdown (Accent Color)
+   ========================================================================== */
+
+.v2-dropdown-wrapper {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.v2-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: var(--v2-input-height);
+    padding: 0 36px 0 var(--v2-space-md);
+    border: var(--v2-input-border);
+    border-radius: var(--v2-input-radius);
+    background: var(--v2-bg-primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    user-select: none;
+}
+
+.v2-dropdown-trigger:hover {
+    border-color: var(--v2-accent);
+}
+
+.v2-dropdown-trigger:focus {
+    outline: none;
+    border-color: var(--v2-accent);
+    box-shadow: 0 0 0 3px var(--v2-accent-light);
+}
+
+.v2-dropdown-wrapper.open .v2-dropdown-trigger {
+    border-color: var(--v2-accent);
+    box-shadow: 0 0 0 3px var(--v2-accent-light);
+}
+
+.v2-dropdown-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Dropdown menu */
+.v2-dropdown-menu {
+    position: fixed;
+    display: none;
+    min-width: 150px;
+    max-height: 280px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    z-index: 99999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.v2-dropdown-wrapper.open .v2-dropdown-menu {
+    display: block;
+}
+
+/* Dropdown options */
+.v2-dropdown-option {
+    padding: 10px 14px;
+    font-size: var(--v2-body-size);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    border-bottom: 1px solid #e5e7eb;
+    color: #6b7280;
+    background: white;
+}
+
+.v2-dropdown-option:last-child {
+    border-bottom: none;
+}
+
+.v2-dropdown-option:hover,
+.v2-dropdown-option.kb-active {
+    background: var(--v2-accent-light);
+    color: var(--v2-accent);
+    font-weight: 700;
+}
+
+.v2-dropdown-option.selected {
+    font-weight: 600;
+    color: var(--v2-accent);
+    background: var(--v2-accent-light);
+}
+
+.v2-dropdown-option.inactive {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.v2-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: var(--v2-space-md);
+    border: var(--v2-input-border);
+    border-radius: var(--v2-input-radius);
+    background: var(--v2-bg-primary);
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.5;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.v2-textarea:focus {
+    outline: none;
+    border-color: var(--v2-accent);
+    box-shadow: 0 0 0 3px var(--v2-accent-light);
+}
+
+.v2-textarea::placeholder {
+    color: var(--v2-text-tertiary);
+}
+
+/* Text selection styling - use theme accent color */
+.v2-input::selection,
+.v2-textarea::selection,
+.v2-select::selection,
+.v2-title-input::selection,
+.v2-org-input::selection,
+.v2-email-body::selection,
+.v2-email-body-text::selection,
+input[type="date"]::selection,
+input[type="time"]::selection {
+    background-color: var(--v2-accent);
+    color: white;
+}
+
+/* Firefox text selection */
+.v2-input::-moz-selection,
+.v2-textarea::-moz-selection,
+.v2-select::-moz-selection,
+.v2-title-input::-moz-selection,
+.v2-org-input::-moz-selection,
+.v2-email-body::-moz-selection,
+.v2-email-body-text::-moz-selection,
+input[type="date"]::-moz-selection,
+input[type="time"]::-moz-selection {
+    background-color: var(--v2-accent);
+    color: white;
+}
+
+/* Select/dropdown option styling */
+.v2-select option:checked,
+.v2-select option:hover {
+    background-color: var(--v2-accent);
+    color: white;
+}
+
+/* Three-column row for type/format/duration */
+.v2-row-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--v2-space-md);
+}
+
+/* Two-column row */
+.v2-row-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--v2-space-md);
+}
+
+/* ==========================================================================
+   7. Tags System
+   ========================================================================== */
+
+.v2-tags-field {
+    margin-bottom: var(--v2-space-lg);
+}
+
+.v2-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    padding: var(--v2-space-sm) var(--v2-space-md);
+    border: var(--v2-input-border);
+    border-radius: var(--v2-input-radius);
+    background: var(--v2-bg-primary);
+    min-height: var(--v2-input-height);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.v2-tags-container:focus-within {
+    border-color: var(--v2-accent);
+    box-shadow: 0 0 0 3px var(--v2-accent-light);
+}
+
+.v2-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--v2-space-xs);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.v2-tag-default {
+    background: var(--v2-accent-light);
+    color: var(--v2-accent);
+    border: 1px solid transparent;
+}
+
+.v2-tag-important {
+    background: var(--v2-important-light);
+    color: var(--v2-important);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.v2-tag-text {
+    line-height: 1.2;
+}
+
+.v2-tag-remove {
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s ease;
+    margin-left: 2px;
+}
+
+.v2-tag-remove:hover {
+    opacity: 1;
+}
+
+.v2-tag-remove svg {
+    width: 12px;
+    height: 12px;
+}
+
+.v2-tag-input {
+    flex: 1;
+    min-width: 80px;
+    border: none;
+    background: transparent;
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+    outline: none;
+    padding: 4px 0;
+}
+
+.v2-tag-input::placeholder {
+    color: var(--v2-text-tertiary);
+}
+
+.v2-tag-add {
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: 1px dashed var(--v2-border-color);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--v2-text-tertiary);
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.v2-tag-add:hover {
+    border-color: var(--v2-accent);
+    color: var(--v2-accent);
+    background: var(--v2-accent-light);
+}
+
+.v2-tag-add svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ==========================================================================
+   8. Staff Pills
+   ========================================================================== */
+
+.v2-staff-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--v2-space-sm);
+}
+
+.v2-staff-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    padding: 6px 12px;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 20px;
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-primary);
+}
+
+.v2-staff-star {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: color 0.15s ease;
+}
+
+.v2-staff-star svg {
+    fill: none;
+    stroke: currentColor;
+}
+
+.v2-staff-star:hover {
+    color: var(--v2-accent);
+}
+
+.v2-staff-star-on {
+    color: var(--v2-accent);
+}
+
+.v2-staff-star-on svg {
+    fill: var(--v2-accent);
+    stroke: var(--v2-accent);
+}
+
+.v2-staff-pill-remove {
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--v2-text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease;
+}
+
+.v2-staff-pill-remove:hover {
+    color: var(--v2-important);
+}
+
+.v2-staff-pill-remove svg {
+    width: 14px;
+    height: 14px;
+}
+
+.v2-add-staff-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    padding: 6px 12px;
+    background: var(--v2-accent-light);
+    border: 1px dashed var(--v2-accent);
+    border-radius: 20px;
+    font-size: var(--v2-small-size);
+    font-weight: 500;
+    color: var(--v2-accent);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-add-staff-btn:hover:not(:disabled) {
+    background: var(--v2-accent);
+    color: white;
+    border-style: solid;
+}
+
+.v2-add-staff-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: auto; /* keep hover for review-mode tooltip */
+}
+
+.v2-add-staff-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ==========================================================================
+   9. Action Bar
+   ========================================================================== */
+
+.v2-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--v2-space-md);
+    padding: var(--v2-space-lg) var(--v2-space-xl) calc(var(--v2-space-lg) + 8px);
+    border-top: 1px solid var(--v2-border-color);
+    background: var(--v2-bg-primary);
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.04);
+    position: relative;
+    z-index: 1;
+}
+
+.v2-action-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.v2-action-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--v2-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.v2-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--v2-space-sm);
+    padding: 8px 14px;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    font-size: var(--v2-small-size);
+    font-weight: 500;
+    color: var(--v2-text-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.v2-action-btn:hover:not(:disabled) {
+    background: var(--v2-accent);
+    border-color: var(--v2-accent);
+    color: white;
+}
+
+.v2-action-btn:disabled,
+.v2-action-btn.v2-action-btn-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--v2-bg-tertiary);
+}
+
+.v2-action-btn-icon {
+    width: 16px;
+    height: 16px;
+    color: currentColor;
+    transition: color 0.15s ease;
+}
+
+/* Status Dropdown */
+.v2-status-group {
+    /* Flows naturally with other action groups */
+}
+
+.v2-status-select {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    padding: 8px 30px 8px 14px;
+    background-color: rgba(107, 114, 128, 0.1);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px 12px;
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    font-size: var(--v2-small-size);
+    font-weight: 600;
+    color: var(--v2-text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    transition: all 0.15s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.v2-status-select .v2-status-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* Hover: fill the button with the active status color and flip the label to
+   white. `currentColor` resolves to the status color because the element's own
+   `color` is left unchanged — only the label span turns white. The
+   [class*="status-"] selector outranks the per-status background-color rules so
+   the solid fill wins. */
+.v2-status-select:hover {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.v2-status-select[class*="status-"]:hover {
+    background-color: currentColor;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.v2-status-select:hover .v2-status-text {
+    color: #ffffff;
+}
+
+.v2-status-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent);
+}
+
+/* Ensure background properties can't be overridden by generic .status-* rules */
+.v2-status-select[class*="status-"] {
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px 12px;
+}
+
+/* Status color variants — pulled from office customization via CSS variables.
+   The chevron SVG can't reference vars, so it falls back to a generic gray
+   stroke when the variable isn't defined. */
+.v2-status-select.status-received {
+    color: var(--status-received, #3b82f6); border-color: var(--status-received, #3b82f6); background-color: rgba(59, 130, 246, 0.1);
+}
+
+.v2-status-select.status-hold {
+    color: var(--status-hold, #f59e0b); border-color: var(--status-hold, #f59e0b); background-color: rgba(245, 158, 11, 0.1);
+}
+
+.v2-status-select.status-referred {
+    color: var(--status-referred, #8b5cf6); border-color: var(--status-referred, #8b5cf6); background-color: rgba(139, 92, 246, 0.1);
+}
+
+.v2-status-select.status-fyied {
+    color: var(--status-fyied, #f97316); border-color: var(--status-fyied, #f97316); background-color: rgba(249, 115, 22, 0.1);
+}
+
+.v2-status-select.status-scheduling_in_progress {
+    color: var(--status-scheduling_in_progress, #14b8a6); border-color: var(--status-scheduling_in_progress, #14b8a6); background-color: rgba(20, 184, 166, 0.1);
+}
+
+.v2-status-select.status-scheduled {
+    color: var(--status-scheduled, #10b981); border-color: var(--status-scheduled, #10b981); background-color: rgba(16, 185, 129, 0.1);
+}
+
+.v2-status-select.status-rsvped {
+    color: var(--status-rsvped, #06b6d4); border-color: var(--status-rsvped, #06b6d4); background-color: rgba(6, 182, 212, 0.1);
+}
+
+.v2-status-select.status-regrets_sent {
+    color: var(--status-regrets_sent, #ef4444); border-color: var(--status-regrets_sent, #ef4444); background-color: rgba(239, 68, 68, 0.1);
+}
+
+.v2-status-select.status-ignored {
+    color: var(--status-ignored, #64748b); border-color: var(--status-ignored, #64748b); background-color: rgba(100, 116, 139, 0.1);
+}
+
+.v2-status-select.status-passed {
+    color: #6b7280; border-color: #6b7280; background-color: rgba(107, 114, 128, 0.1);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.v2-status-select.status-canceled {
+    color: #ef4444; border-color: #ef4444; background-color: rgba(239, 68, 68, 0.1);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2.5'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.v2-status-select.status-review,
+.v2-status-select.status-requires_hms_review {
+    color: #d97706; border-color: #f59e0b; background-color: rgba(245, 158, 11, 0.1);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23d97706' stroke-width='2.5'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+/* Custom Status Dropdown */
+.v2-status-dropdown-wrapper {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.v2-status-dropdown-wrapper.open .v2-status-select {
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent);
+}
+
+/* Dropdown menu - fixed position, set via JS */
+.v2-status-dropdown-menu {
+    position: fixed;
+    display: none;
+    min-width: 150px;
+    max-height: 280px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    z-index: 99999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.v2-status-dropdown-wrapper.open .v2-status-dropdown-menu {
+    display: block;
+}
+
+/* Dropdown options - gray by default */
+.v2-status-dropdown-option {
+    padding: 6px 12px;
+    font-size: var(--v2-body-size);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    outline: none;
+    border: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    color: #6b7280 !important;
+    background: white !important;
+}
+
+.v2-status-dropdown-option:focus,
+.v2-status-dropdown-option:focus-visible,
+.v2-status-dropdown-menu:focus,
+.v2-status-dropdown-menu:focus-visible,
+.v2-status-select:focus-visible {
+    outline: none;
+}
+
+.v2-status-dropdown-option:last-child {
+    border-bottom: none !important;
+}
+
+.v2-status-dropdown-option:hover,
+.v2-status-dropdown-option.kb-active {
+    background: #f9fafb !important;
+    font-weight: 700;
+}
+
+.v2-status-dropdown-option.selected {
+    font-weight: 600;
+}
+
+.v2-status-dropdown-option.inactive {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+/* Option status colors - on hover and selected. Pull from office customization
+   via CSS variables so user-edited palettes propagate everywhere. */
+.v2-status-dropdown-option.status-received:hover, .v2-status-dropdown-option.status-received.kb-active, .v2-status-dropdown-option.status-received.selected { color: var(--status-received, #3b82f6) !important; background: rgba(59, 130, 246, 0.1) !important; }
+.v2-status-dropdown-option.status-hold:hover, .v2-status-dropdown-option.status-hold.kb-active, .v2-status-dropdown-option.status-hold.selected { color: var(--status-hold, #f59e0b) !important; background: rgba(245, 158, 11, 0.1) !important; }
+.v2-status-dropdown-option.status-referred:hover, .v2-status-dropdown-option.status-referred.kb-active, .v2-status-dropdown-option.status-referred.selected { color: var(--status-referred, #8b5cf6) !important; background: rgba(139, 92, 246, 0.1) !important; }
+.v2-status-dropdown-option.status-fyied:hover, .v2-status-dropdown-option.status-fyied.kb-active, .v2-status-dropdown-option.status-fyied.selected { color: var(--status-fyied, #f97316) !important; background: rgba(249, 115, 22, 0.1) !important; }
+.v2-status-dropdown-option.status-scheduling_in_progress:hover, .v2-status-dropdown-option.status-scheduling_in_progress.kb-active, .v2-status-dropdown-option.status-scheduling_in_progress.selected { color: var(--status-scheduling_in_progress, #14b8a6) !important; background: rgba(20, 184, 166, 0.1) !important; }
+.v2-status-dropdown-option.status-scheduled:hover, .v2-status-dropdown-option.status-scheduled.kb-active, .v2-status-dropdown-option.status-scheduled.selected { color: var(--status-scheduled, #10b981) !important; background: rgba(16, 185, 129, 0.1) !important; }
+.v2-status-dropdown-option.status-rsvped:hover, .v2-status-dropdown-option.status-rsvped.kb-active, .v2-status-dropdown-option.status-rsvped.selected { color: var(--status-rsvped, #06b6d4) !important; background: rgba(6, 182, 212, 0.1) !important; }
+.v2-status-dropdown-option.status-regrets_sent:hover, .v2-status-dropdown-option.status-regrets_sent.kb-active, .v2-status-dropdown-option.status-regrets_sent.selected { color: var(--status-regrets_sent, #ef4444) !important; background: rgba(239, 68, 68, 0.1) !important; }
+.v2-status-dropdown-option.status-ignored:hover, .v2-status-dropdown-option.status-ignored.kb-active, .v2-status-dropdown-option.status-ignored.selected { color: var(--status-ignored, #64748b) !important; background: rgba(100, 116, 139, 0.1) !important; }
+.v2-status-dropdown-option.status-passed:hover, .v2-status-dropdown-option.status-passed.kb-active, .v2-status-dropdown-option.status-passed.selected { color: var(--status-passed, #6b7280) !important; background: rgba(107, 114, 128, 0.1) !important; }
+.v2-status-dropdown-option.status-canceled:hover, .v2-status-dropdown-option.status-canceled.kb-active, .v2-status-dropdown-option.status-canceled.selected { color: var(--status-canceled, #6b7280) !important; background: rgba(107, 114, 128, 0.1) !important; }
+.v2-status-dropdown-option.status-requires_hms_review:hover, .v2-status-dropdown-option.status-requires_hms_review.kb-active, .v2-status-dropdown-option.status-requires_hms_review.selected { color: var(--status-requires_hms_review, #eab308) !important; background: rgba(234, 179, 8, 0.1) !important; }
+
+/* ==========================================================================
+   10. Email Panel (Toggleable)
+   ========================================================================== */
+
+.v2-email-panel {
+    display: none;
+    flex-direction: column;
+    flex: 1; /* Take remaining space after main panel */
+    min-width: 300px;
+    background: var(--v2-bg-secondary);
+    border-right: 1px solid var(--v2-border-color);
+    overflow: hidden;
+    order: -1; /* Place email panel before main panel (left side) */
+    position: relative; /* anchor the floating Respond button */
+}
+
+/* Floating Respond button (bottom-right of the email pane) */
+.v2-email-respond-fab {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--v2-border-color, #e2e8f0);
+    border-radius: 50%;
+    background: var(--v2-bg-primary, #fff);
+    color: #2b5ea0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    z-index: 20;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.v2-email-respond-fab:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    background: var(--v2-bg-secondary, #f8fafc);
+}
+
+.v2-email-respond-fab svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* App-style tooltip on the floating button */
+.v2-email-respond-fab::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 9px;
+    background: var(--v2-text-primary, #1e293b);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    pointer-events: none;
+}
+
+.v2-email-respond-fab::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--v2-text-primary, #1e293b);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    pointer-events: none;
+}
+
+.v2-email-respond-fab:hover::after,
+.v2-email-respond-fab:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Unfilled-variable chips in the send warning popup */
+.v2-send-warning-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.v2-send-warning-list .v2-template-var-unfilled {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    padding: 2px 6px;
+}
+
+.v2-modal-container.email-visible .v2-email-panel {
+    display: flex;
+}
+
+.v2-email-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--v2-space-md);
+    padding: var(--v2-space-lg);
+    background: var(--v2-bg-primary);
+    border-bottom: 1px solid var(--v2-border-color);
+    flex-shrink: 0;
+}
+
+.v2-email-toolbar-actions {
+    display: flex;
+    gap: var(--v2-space-sm);
+}
+
+.v2-email-search {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.v2-email-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--v2-text-tertiary);
+    pointer-events: none;
+}
+
+.v2-email-search-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.v2-email-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    height: 36px;
+    padding: 0 12px 0 34px;
+    border: var(--v2-input-border);
+    border-radius: 8px;
+    background: var(--v2-bg-primary);
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-primary);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.v2-email-search-input:focus {
+    outline: none;
+    border-color: var(--v2-accent);
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.v2-email-content {
+    flex: 1;
+    min-height: 0; /* Required for proper flex scroll behavior */
+    overflow-y: auto;
+    padding: var(--v2-space-lg);
+    /* Scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--v2-border-color) transparent;
+}
+
+.v2-email-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.v2-email-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.v2-email-content::-webkit-scrollbar-thumb {
+    background: var(--v2-border-color);
+    border-radius: 4px;
+}
+
+.v2-email-content::-webkit-scrollbar-thumb:hover {
+    background: var(--v2-border-hover);
+}
+
+.v2-email-item {
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    padding: var(--v2-space-lg);
+    margin-bottom: var(--v2-space-md);
+}
+
+.v2-email-item:last-child {
+    margin-bottom: 0;
+}
+
+/* ============================================================
+   Thread grouping: each conversation is a labelled block with a
+   clear horizontal divide and its own Reply button.
+   ============================================================ */
+.v2-email-thread-group {
+    margin-bottom: var(--v2-space-lg);
+}
+
+/* Strong horizontal line between consecutive threads. */
+.v2-email-thread-group + .v2-email-thread-group {
+    margin-top: var(--v2-space-lg);
+    padding-top: var(--v2-space-lg);
+    border-top: 2px solid var(--v2-border-color);
+}
+
+.v2-email-thread-divider {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--v2-space-md);
+    margin-bottom: var(--v2-space-md);
+    padding-bottom: var(--v2-space-sm);
+    border-bottom: 1px solid var(--v2-border-color);
+}
+
+.v2-email-thread-label {
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    min-width: 0;
+}
+
+.v2-thread-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--v2-text-tertiary);
+    flex-shrink: 0;
+}
+
+.v2-thread-subject {
+    font-size: var(--v2-body-size);
+    font-weight: 600;
+    color: var(--v2-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.v2-thread-count {
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-tertiary);
+    background: var(--v2-bg-secondary);
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.v2-thread-reply-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--v2-body-size);
+    font-weight: 600;
+    color: var(--v2-accent);
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 6px;
+    padding: 8px 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.v2-thread-reply-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Hover matches the .v2-action-btn (Attach email / Open in Outlook) accent fill. */
+.v2-thread-reply-btn:hover {
+    background: var(--v2-accent);
+    border-color: var(--v2-accent);
+    color: #fff;
+}
+
+.v2-email-header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+}
+
+
+.v2-email-also-on {
+    margin-top: var(--v2-space-sm);
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-tertiary);
+    font-style: italic;
+}
+
+.v2-email-standalone-group .v2-thread-subject {
+    color: var(--v2-text-secondary);
+}
+
+/* Small icon button used for open-in-outlook / detach / remove / exclude. */
+.v2-thread-icon-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--v2-text-tertiary);
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.v2-thread-icon-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.v2-thread-icon-btn:hover {
+    background: var(--v2-bg-secondary);
+    color: var(--v2-text-primary);
+}
+
+/* Removal buttons go red on hover; the Outlook button stays neutral. */
+.v2-email-exclude-btn:hover,
+.v2-email-detach-btn:hover,
+.v2-thread-detach-btn:hover {
+    color: var(--v2-important, #c0392b);
+}
+
+/* JS-positioned tooltip on <body> so it is never clipped by the scrollable
+   email panel (a CSS ::after tooltip gets cut off by the overflow container). */
+.v2-hover-tooltip {
+    position: fixed;
+    z-index: 100000;
+    padding: 5px 9px;
+    background: var(--v2-text-primary, #1e293b);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+}
+
+/* ============================================================
+   Attach picker
+   ============================================================ */
+/* Anchor the picker dropdown to the toolbar. */
+.v2-email-toolbar {
+    position: relative;
+}
+
+.v2-attach-picker {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 60;
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    background: var(--v2-bg-primary);
+    padding: var(--v2-space-md);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+/* Ctrl+F-style search nav: floats below the search box so the counter text
+   ("1/4" / "No matches") never reflows the toolbar, with prev/next arrows. */
+.v2-search-nav {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 4px 3px 8px;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    z-index: 40;
+}
+
+.v2-search-counter {
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-tertiary);
+    white-space: nowrap;
+    min-width: 64px;
+    text-align: right;
+}
+
+.v2-search-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--v2-text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.v2-search-nav-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.v2-search-nav-btn:hover {
+    background: var(--v2-bg-secondary);
+    color: var(--v2-text-primary);
+}
+
+/* Search match highlighting. */
+.v2-search-highlight {
+    background: #fde68a;
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+.v2-search-highlight-current {
+    background: var(--v2-accent);
+    color: #fff;
+}
+
+.v2-attach-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--v2-space-sm);
+}
+
+.v2-attach-picker-title {
+    font-size: var(--v2-body-size);
+    font-weight: 600;
+    color: var(--v2-text-primary);
+}
+
+.v2-attach-picker-close {
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--v2-text-tertiary);
+    cursor: pointer;
+}
+
+.v2-attach-search-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--v2-border-color);
+    border-radius: 6px;
+    background: var(--v2-bg-secondary);
+    color: var(--v2-text-primary);
+    font-size: var(--v2-body-size);
+    margin-bottom: var(--v2-space-sm);
+}
+
+.v2-attach-results {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.v2-attach-empty {
+    padding: var(--v2-space-md);
+    text-align: center;
+    color: var(--v2-text-tertiary);
+    font-size: var(--v2-small-size);
+}
+
+.v2-attach-result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--v2-space-md);
+    padding: var(--v2-space-sm) 0;
+    border-bottom: 1px solid var(--v2-border-color);
+}
+
+.v2-attach-result:last-child {
+    border-bottom: none;
+}
+
+.v2-attach-result-info {
+    min-width: 0;
+}
+
+.v2-attach-result-subject {
+    font-size: var(--v2-body-size);
+    font-weight: 500;
+    color: var(--v2-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.v2-attach-result-meta {
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.v2-attach-result-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.v2-attach-action-btn {
+    font-size: var(--v2-small-size);
+    font-weight: 600;
+    color: var(--v2-accent);
+    background: transparent;
+    border: 1px solid var(--v2-border-color);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.v2-attach-action-btn:hover {
+    background: var(--v2-bg-secondary);
+    border-color: var(--v2-border-hover);
+}
+
+/* Reply button row, sitting below the last email of a thread. */
+.v2-thread-reply-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: calc(-1 * var(--v2-space-sm));
+    margin-bottom: var(--v2-space-md);
+}
+
+/* Destructive confirm button in the app-styled removal popup. */
+.v2-confirm-danger-btn {
+    font-size: var(--v2-body-size);
+    font-weight: 600;
+    color: #fff;
+    background: var(--v2-important, #c0392b);
+    border: 1px solid var(--v2-important, #c0392b);
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.v2-confirm-danger-btn:hover {
+    opacity: 0.9;
+}
+
+/* Center the text/actions of the plain (confirm / warning) popups. */
+.v2-plain-popup {
+    text-align: center;
+}
+
+.v2-plain-popup .v2-draft-prompt-header,
+.v2-plain-popup .v2-draft-prompt-body,
+.v2-plain-popup .v2-draft-prompt-actions {
+    justify-content: center;
+    text-align: center;
+}
+
+.v2-email-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--v2-space-sm);
+}
+
+.v2-email-from {
+    font-size: var(--v2-body-size);
+    font-weight: 600;
+    color: var(--v2-text-primary);
+}
+
+.v2-email-date {
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-tertiary);
+}
+
+.v2-email-subject {
+    font-size: var(--v2-body-size);
+    font-weight: 500;
+    color: var(--v2-text-primary);
+    margin-bottom: var(--v2-space-md);
+}
+
+.v2-email-body {
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-secondary);
+    line-height: 1.6;
+}
+
+.v2-email-empty {
+    text-align: center;
+    padding: var(--v2-space-xl);
+    color: var(--v2-text-tertiary);
+}
+
+.v2-email-empty-icon {
+    margin-bottom: var(--v2-space-md);
+    color: var(--v2-text-tertiary);
+}
+
+.v2-email-empty-icon svg {
+    width: 48px;
+    height: 48px;
+    opacity: 0.5;
+}
+
+.v2-email-empty-text {
+    font-size: var(--v2-body-size);
+}
+
+/* ==========================================================================
+   11. Auto-save Indicator
+   ========================================================================== */
+
+.v2-autosave-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+    padding: 8px 14px;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-secondary);
+    z-index: 1100;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.v2-autosave-indicator.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.v2-autosave-indicator.saving {
+    color: var(--v2-warning);
+}
+
+.v2-autosave-indicator.saved {
+    color: var(--v2-success);
+}
+
+.v2-autosave-indicator.error {
+    color: var(--v2-important);
+}
+
+.v2-autosave-icon {
+    width: 16px;
+    height: 16px;
+}
+
+/* ==========================================================================
+   12. Responsive Design
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .v2-modal-overlay {
+        padding: 0;
+    }
+
+    .v2-modal-container {
+        max-width: 100%;
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
+    }
+
+    /* Skeleton tracks the full-screen modal on mobile too */
+    .v2-skeleton-overlay .v2-modal-container {
+        height: 100vh;
+    }
+
+    .v2-modal-container.email-visible {
+        flex-direction: column;
+    }
+
+    .v2-modal-container.email-visible .v2-main-panel {
+        flex: none;
+        min-width: 100%;
+    }
+
+    .v2-email-panel {
+        display: none !important;
+    }
+
+    .v2-header {
+        padding: var(--v2-space-lg);
+    }
+
+    .v2-time-section {
+        padding: var(--v2-space-lg);
+    }
+
+    .v2-time-toggle-row {
+        grid-template-columns: 1fr;
+        gap: var(--v2-space-md);
+    }
+
+    .v2-toggle-column {
+        justify-content: flex-start;
+    }
+
+    .v2-time-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--v2-space-md);
+    }
+
+    .v2-time-grid {
+        grid-template-columns: 1fr;
+        gap: var(--v2-space-lg);
+    }
+
+    .v2-time-grid-2col {
+        grid-template-columns: 1fr;
+    }
+
+    .v2-checkbox-row {
+        grid-column: 1;
+        justify-self: start;
+    }
+
+    .v2-panel-content {
+        padding: var(--v2-space-lg);
+    }
+
+    .v2-row-3 {
+        grid-template-columns: 1fr;
+    }
+
+    .v2-row-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .v2-action-bar {
+        flex-wrap: nowrap;
+        padding: var(--v2-space-md);
+        gap: var(--v2-space-sm);
+    }
+
+    .v2-action-group {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .v2-action-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .v2-action-label {
+        display: none;
+    }
+
+    .v2-status-group {
+        flex: 1 1 0;
+    }
+
+    .v2-status-select {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .v2-header-icon {
+        display: none;
+    }
+
+    .v2-tabs {
+        overflow-x: auto;
+    }
+
+    .v2-tab {
+        padding: var(--v2-space-sm) var(--v2-space-md);
+        font-size: var(--v2-small-size);
+    }
+}
+
+/* ==========================================================================
+   13. Animations
+   ========================================================================== */
+
+@keyframes v2-fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes v2-slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .v2-modal-overlay,
+    .v2-modal-container,
+    .v2-toggle-btn,
+    .v2-tab,
+    .v2-input,
+    .v2-select,
+    .v2-textarea,
+    .v2-action-btn,
+    .v2-autosave-indicator {
+        transition: none;
+    }
+}
+
+/* ==========================================================================
+   14. Print Styles
+   ========================================================================== */
+
+@media print {
+    .v2-modal-overlay {
+        display: none !important;
+    }
+}
+
+/* ==========================================================================
+   15. Human Review Mode Styles
+   ========================================================================== */
+
+/* Modal border glow for review mode - subtle YELLOW outer glow */
+.v2-modal-container.v2-review-mode {
+    box-shadow:
+        var(--v2-modal-shadow),
+        0 0 0 2px rgba(234, 179, 8, 0.35),
+        0 0 20px rgba(234, 179, 8, 0.15);
+    animation: v2-review-pulse-outer 3s ease-in-out infinite;
+}
+
+/* During review, force snap-scroll inside the modal so rapid Jump-to-Next
+   clicks don't stack smooth-scroll animations from the site-wide
+   `scroll-behavior: smooth` rule (main.css). Smooth scroll queueing was
+   what made the cursor appear to oscillate between the last two fields. */
+.v2-modal-container.v2-review-mode,
+.v2-modal-container.v2-review-mode .v2-panel-content,
+.v2-modal-container.v2-review-mode .v2-main-panel,
+.v2-modal-container.v2-review-mode .v2-email-content {
+    scroll-behavior: auto !important;
+}
+
+/* Internal glow overlay - subtle, NO pulsing, appears ABOVE all content */
+.v2-modal-container.v2-review-mode::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow:
+        inset 0 0 40px rgba(234, 179, 8, 0.08),
+        inset 0 0 15px rgba(234, 179, 8, 0.05);
+    pointer-events: none;
+    z-index: 9999;
+    /* No animation - static subtle glow */
+}
+
+@keyframes v2-review-pulse-outer {
+    0%, 100% {
+        box-shadow:
+            var(--v2-modal-shadow),
+            0 0 0 2px rgba(234, 179, 8, 0.35),
+            0 0 20px rgba(234, 179, 8, 0.15);
+    }
+    50% {
+        box-shadow:
+            var(--v2-modal-shadow),
+            0 0 0 3px rgba(234, 179, 8, 0.3),
+            0 0 25px rgba(234, 179, 8, 0.2);
+    }
+}
+
+/* Reviewable field wrapper - just adds relative positioning, doesn't change layout */
+.v2-review-field-wrapper {
+    position: relative;
+}
+
+/* Floating tooltip for Accept/Reject buttons - white bg with yellow tint, above field */
+.v2-review-tooltip {
+    position: fixed;
+    bottom: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, 0.98),
+        rgba(234, 179, 8, 0.12));
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    border-radius: 8px;
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.12),
+        0 0 12px rgba(234, 179, 8, 0.2);
+    z-index: 99999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    pointer-events: none;
+}
+
+/* Wrapper needs to use fixed positioning for tooltip */
+.v2-review-field-wrapper {
+    position: relative;
+}
+
+/* Show tooltip ONLY on hover (not focus) - for pending fields */
+.v2-review-field-wrapper.v2-review-pending:hover .v2-review-tooltip {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Hide tooltip when explicitly hidden (after accept/reject) */
+.v2-review-tooltip.v2-review-tooltip-hidden {
+    display: none !important;
+}
+
+/* Pending review - YELLOW highlight for ALL field types */
+.v2-review-field-wrapper.v2-review-pending .v2-input,
+.v2-review-field-wrapper.v2-review-pending .v2-select,
+.v2-review-field-wrapper.v2-review-pending .v2-textarea,
+.v2-review-field-wrapper.v2-review-pending .v2-title-input,
+.v2-review-field-wrapper.v2-review-pending .v2-org-input,
+.v2-review-field-wrapper.v2-review-pending .v2-date-input,
+.v2-review-field-wrapper.v2-review-pending .v2-dropdown-trigger,
+.v2-review-field-wrapper.v2-review-pending input[type="text"],
+.v2-review-field-wrapper.v2-review-pending input[type="date"],
+.v2-review-field-wrapper.v2-review-pending input[type="time"],
+.v2-field-needs-review {
+    border-color: #eab308 !important;
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.25) !important;
+    background-color: rgba(234, 179, 8, 0.08) !important;
+    font-style: italic !important;
+}
+
+/* Hardcoded pending highlight for Type / Format / Duration dropdowns.
+   These are .v2-dropdown-trigger divs (not inputs), and the rule above
+   already covers them, but we list the IDs explicitly so the highlight
+   is guaranteed to apply even if dropdown class names are refactored. */
+.v2-review-field-wrapper.v2-review-pending #v2-event-type,
+.v2-review-field-wrapper.v2-review-pending #v2-event-format,
+.v2-review-field-wrapper.v2-review-pending #v2-duration {
+    border-color: #eab308 !important;
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.25) !important;
+    background-color: rgba(234, 179, 8, 0.08) !important;
+    font-style: italic !important;
+}
+
+/* Hover state for pending (non-reviewed) fields - remove italic, darken background */
+.v2-review-field-wrapper.v2-review-pending:hover .v2-input,
+.v2-review-field-wrapper.v2-review-pending:hover .v2-select,
+.v2-review-field-wrapper.v2-review-pending:hover .v2-textarea,
+.v2-review-field-wrapper.v2-review-pending:hover .v2-title-input,
+.v2-review-field-wrapper.v2-review-pending:hover .v2-org-input,
+.v2-review-field-wrapper.v2-review-pending:hover .v2-date-input,
+.v2-review-field-wrapper.v2-review-pending:hover .v2-dropdown-trigger,
+.v2-review-field-wrapper.v2-review-pending:hover input[type="text"],
+.v2-review-field-wrapper.v2-review-pending:hover input[type="date"],
+.v2-review-field-wrapper.v2-review-pending:hover input[type="time"],
+.v2-review-field-wrapper.v2-review-pending:hover #v2-event-type,
+.v2-review-field-wrapper.v2-review-pending:hover #v2-event-format,
+.v2-review-field-wrapper.v2-review-pending:hover #v2-duration {
+    font-style: normal !important;
+    background-color: rgba(234, 179, 8, 0.18) !important;
+}
+
+/* Title input in review mode - same yellow styling */
+.v2-review-mode .v2-title-input.v2-review-pending-field,
+.v2-review-mode .v2-header-row .v2-review-field-wrapper.v2-review-pending input {
+    border-color: #eab308 !important;
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.25) !important;
+    background-color: rgba(234, 179, 8, 0.08) !important;
+    font-style: italic !important;
+}
+
+/* Organization/Group input in review mode */
+.v2-review-mode .v2-organization-row .v2-review-field-wrapper.v2-review-pending input {
+    border-color: #eab308 !important;
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.25) !important;
+    background-color: rgba(234, 179, 8, 0.08) !important;
+    font-style: italic !important;
+}
+
+/* Date and time inputs in review mode */
+.v2-review-mode .v2-date-time-section .v2-review-field-wrapper.v2-review-pending input[type="date"],
+.v2-review-mode .v2-date-time-section .v2-review-field-wrapper.v2-review-pending input[type="time"],
+.v2-review-mode .v2-review-field-wrapper.v2-review-pending input[type="date"],
+.v2-review-mode .v2-review-field-wrapper.v2-review-pending input[type="time"] {
+    border-color: #eab308 !important;
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.25) !important;
+    background-color: rgba(234, 179, 8, 0.08) !important;
+    font-style: italic !important;
+}
+
+/* Hover state for date/time inputs - must match specificity of above selectors */
+.v2-review-mode .v2-date-time-section .v2-review-field-wrapper.v2-review-pending:hover input[type="date"],
+.v2-review-mode .v2-date-time-section .v2-review-field-wrapper.v2-review-pending:hover input[type="time"],
+.v2-review-mode .v2-review-field-wrapper.v2-review-pending:hover input[type="date"],
+.v2-review-mode .v2-review-field-wrapper.v2-review-pending:hover input[type="time"] {
+    font-style: normal !important;
+    background-color: rgba(234, 179, 8, 0.18) !important;
+}
+
+/* Accepted - no visual indicator (removed green checkmark) */
+
+/* Rejected - field cleared, normal appearance */
+.v2-review-field-wrapper.v2-review-rejected .v2-input,
+.v2-review-field-wrapper.v2-review-rejected .v2-select,
+.v2-review-field-wrapper.v2-review-rejected .v2-textarea {
+    border-color: var(--v2-border-color);
+    background: var(--v2-bg-secondary);
+}
+
+/* Review popover */
+.v2-review-popover {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    animation: v2-fadeIn 0.15s ease;
+}
+
+.v2-review-popover-content {
+    padding: 8px 12px;
+}
+
+.v2-review-popover-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 6px;
+}
+
+.v2-review-confidence {
+    font-size: 11px;
+    color: var(--v2-text-tertiary);
+}
+
+.v2-review-popover-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.v2-review-accept-btn,
+.v2-review-reject-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+/* Accept button - dark green for contrast on yellow */
+.v2-review-accept-btn {
+    background: #166534;
+    color: white;
+    border: 1px solid #14532d;
+}
+
+.v2-review-accept-btn:hover {
+    background: #14532d;
+}
+
+/* Reject button - dark red for contrast on yellow */
+.v2-review-reject-btn {
+    background: #991b1b;
+    color: white;
+    border: 1px solid #7f1d1d;
+}
+
+.v2-review-reject-btn:hover {
+    background: #7f1d1d;
+}
+
+.v2-review-accept-btn svg,
+.v2-review-reject-btn svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* Review progress bar (bottom row) - replaces action bar during review */
+.v2-review-bottom-row {
+    /* auto | 1fr | auto grid: the jump button and the "Human Review Required"
+       tag each take exactly their content width (so the tag never clips), and
+       the progress timeline takes the middle and shrinks to fit what's left. */
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--v2-bg-secondary);
+    border-top: 1px solid var(--v2-border-color);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.v2-review-bottom-row .v2-jump-next-btn { justify-self: start; }
+.v2-review-bottom-row .v2-review-warning { justify-self: end; }
+
+/* Progress container, centered in the middle grid column. Fills the column and
+   shrinks with it (max-width caps it on wide screens) so the side cells always
+   get the room they need for the jump button and the review-required tag. */
+.v2-review-progress-container {
+    justify-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    width: 100%;
+    max-width: 280px;
+}
+
+/* Yellow progress bar track */
+.v2-review-progress-bar {
+    width: 100%;
+    max-width: 250px;
+}
+
+.v2-jump-next-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #d9a406;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.v2-jump-next-btn:hover {
+    background: #ca8a04;
+}
+
+.v2-jump-next-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.v2-jump-next-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.v2-progress-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.v2-progress-fill {
+    height: 100%;
+    background: #eab308;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.v2-progress-text {
+    font-size: 11px;
+    color: var(--v2-text-secondary);
+    white-space: nowrap;
+}
+
+.v2-review-warning {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #a16207;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.v2-review-warning svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* Hide action bar during review mode */
+.v2-action-bar.v2-hidden-during-review {
+    display: none !important;
+}
+
+/* Disabled elements during review.
+   pointer-events stays auto so the tooltip can fire on hover; clicks are
+   blocked separately (tab click handler checks .v2-tab-disabled; the
+   respond button has the native `disabled` attribute set). */
+.v2-tab.v2-tab-disabled {
+    position: relative;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.v2-action-btn.v2-btn-disabled-review {
+    position: relative;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Native-disabled buttons still need to receive hover for the tooltip. */
+.v2-email-respond-btn[data-review-locked-tooltip] {
+    position: relative;
+    pointer-events: auto;
+}
+
+/* Contacts/orgs add + create buttons disabled during review: dimmed, but they
+   keep pointer-events so the "Complete human review first" tooltip can fire. */
+.ec-add-icon-btn[data-review-locked-tooltip] {
+    pointer-events: auto;
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Grayed-out Respond button while human review is required. */
+.v2-email-respond-btn:disabled,
+.v2-email-respond-btn.v2-btn-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* App-style tooltip for greyed-out elements during human review.
+   Rendered as a single <div> portaled to <body> by JS (see
+   setupReviewLockedTooltip in event-editing-modal-v2.js) so it isn't
+   clipped by overflow:hidden / overflow:auto ancestors like
+   .v2-panel-content. Uses the same CSS variables as the sidebar /
+   dashboard tooltips so it stays theme-aware. */
+.v2-review-locked-tooltip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding: 6px 12px;
+    background: var(--text-primary, #1e293b);
+    color: var(--bg-primary, #fff);
+    font-size: var(--font-size-sm, 13px);
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    border-radius: var(--radius-sm, 6px);
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1));
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    pointer-events: none;
+    z-index: 1000000;
+}
+
+.v2-review-locked-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--text-primary, #1e293b);
+}
+
+.v2-review-locked-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Email highlight - YELLOW, no extra spacing, larger font */
+.v2-email-highlight {
+    background: rgba(234, 179, 8, 0.35);
+    border-radius: 2px;
+    font-size: 1.1em;
+    font-weight: 500;
+    animation: v2-highlight-pulse 1s ease-in-out 2;
+    /* No padding to avoid adding extra space */
+}
+
+@keyframes v2-highlight-pulse {
+    0%, 100% { background: rgba(234, 179, 8, 0.35); }
+    50% { background: rgba(234, 179, 8, 0.55); }
+}
+
+/* Review confirm dialog overlay - HIDDEN by default */
+.v2-review-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+}
+
+/* Show dialog when visible class is added */
+.v2-review-confirm-overlay.visible {
+    display: flex;
+    animation: v2-fadeIn 0.15s ease;
+}
+
+.v2-review-confirm-dialog {
+    position: relative;
+    background: var(--v2-bg-primary);
+    border-radius: 16px;
+    padding: 28px 24px 24px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--v2-border-color);
+    text-align: center;
+}
+
+/* X close button in top right */
+.v2-review-confirm-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--v2-bg-secondary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--v2-text-tertiary);
+}
+
+.v2-review-confirm-close:hover {
+    background: var(--v2-bg-tertiary);
+    color: var(--v2-text-primary);
+    border-color: var(--v2-border-hover);
+}
+
+.v2-review-confirm-close svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Icon container - centered warning icon */
+.v2-review-confirm-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    background: rgba(234, 179, 8, 0.12);
+    border-radius: 50%;
+    color: #eab308;
+}
+
+.v2-review-confirm-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.v2-review-confirm-header {
+    margin-bottom: 8px;
+}
+
+.v2-review-confirm-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--v2-text-primary);
+}
+
+.v2-review-confirm-body {
+    margin-bottom: 20px;
+}
+
+.v2-review-confirm-body p {
+    margin: 0 0 8px;
+    color: var(--v2-text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.v2-review-confirm-body p:last-child {
+    margin-bottom: 0;
+}
+
+.v2-review-confirm-stats {
+    font-weight: 600;
+    color: #eab308 !important;
+}
+
+.v2-review-confirm-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Base button styles for all dialog buttons */
+.v2-review-confirm-cancel,
+.v2-review-confirm-later,
+.v2-review-confirm-discard {
+    flex: 1;
+    min-width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+/* Cancel button - subtle outline */
+.v2-review-confirm-cancel {
+    background: var(--v2-bg-secondary);
+    color: var(--v2-text-secondary);
+    border: 1px solid var(--v2-border-color);
+}
+
+.v2-review-confirm-cancel:hover {
+    background: var(--v2-bg-tertiary);
+    color: var(--v2-text-primary);
+    border-color: var(--v2-border-hover);
+}
+
+/* Save & Close button - primary action, blue/accent */
+.v2-review-confirm-later {
+    background: var(--v2-accent);
+    color: white;
+    border: 1px solid var(--v2-accent);
+}
+
+.v2-review-confirm-later:hover {
+    background: var(--v2-accent-hover);
+    border-color: var(--v2-accent-hover);
+}
+
+/* Discard button - destructive, red */
+.v2-review-confirm-discard {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--v2-important);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.v2-review-confirm-discard:hover {
+    background: var(--v2-important);
+    color: white;
+    border-color: var(--v2-important);
+}
+
+/* Legacy button classes for backward compatibility */
+.v2-btn-discard,
+.v2-btn-later {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-btn-discard {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--v2-important);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.v2-btn-discard:hover {
+    background: var(--v2-important);
+    color: white;
+}
+
+.v2-btn-later {
+    background: var(--v2-accent);
+    color: white;
+    border: none;
+}
+
+.v2-btn-later:hover {
+    background: var(--v2-accent-hover);
+}
+
+.v2-btn-discard svg,
+.v2-btn-later svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Undo reject button - inline with rejected field */
+.v2-undo-reject-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 4px 8px;
+    background: var(--v2-bg-tertiary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--v2-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-undo-reject-btn:hover {
+    background: var(--v2-bg-secondary);
+    color: var(--v2-text-primary);
+}
+
+/* Review mode responsive adjustments */
+@media (max-width: 768px) {
+    .v2-review-bottom-row {
+        /* Stack on narrow screens (the centered grid is for wider widths). */
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .v2-review-progress-container {
+        width: 100%;
+    }
+
+    .v2-review-progress-bar {
+        flex-wrap: wrap;
+    }
+
+    .v2-jump-next-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .v2-progress-track {
+        order: 3;
+        width: 100%;
+        flex: none;
+    }
+
+    .v2-review-warning {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ==========================================================================
+   16. Approval Routing Styles
+   ========================================================================== */
+
+/* Empty state container */
+.v2-no-routing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--v2-space-md);
+    padding: var(--v2-space-lg);
+    background: var(--v2-bg-tertiary);
+    border-radius: var(--v2-input-radius);
+    text-align: center;
+}
+
+.v2-empty-state {
+    color: var(--v2-text-tertiary);
+    font-size: var(--v2-small-size);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Approval routing container */
+.v2-approval-routing-container {
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: var(--v2-input-radius);
+    padding: var(--v2-space-md);
+}
+
+/* Routing chain container */
+.v2-routing-chain {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-sm);
+}
+
+/* Routing table styles */
+.v2-routing-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--v2-bg-primary);
+}
+
+.v2-routing-table thead th {
+    text-align: left;
+    padding: 6px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--v2-text-tertiary);
+    border-bottom: 1px solid var(--v2-border-color);
+    background: var(--v2-bg-secondary);
+}
+
+.v2-routing-table tbody td {
+    padding: 8px;
+    border-bottom: 1px solid var(--v2-border-color);
+    vertical-align: middle;
+}
+
+.v2-routing-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Column widths */
+.v2-rt-col-num { width: 32px; text-align: center; }
+.v2-rt-col-reviewer { width: 35%; }
+.v2-rt-col-status { width: 100px; }
+.v2-rt-col-comment { }
+
+/* Stage number cell */
+.v2-rt-stage-num {
+    font-weight: 600;
+    color: var(--v2-text-secondary);
+    text-align: center;
+}
+
+.v2-rt-stage-continuation {
+    color: transparent;
+}
+
+/* Reviewer name */
+.v2-rt-reviewer {
+    font-weight: 500;
+    color: var(--v2-text-primary);
+}
+
+/* Status cell */
+.v2-rt-status-cell {
+    white-space: nowrap;
+}
+
+.v2-rt-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.v2-rt-status svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.v2-rt-status-approved {
+    color: #15803d;
+}
+
+.v2-rt-status-sent-back {
+    color: #b91c1c;
+}
+
+.v2-rt-status-current {
+    color: #b45309;
+}
+
+.v2-rt-status-pending {
+    color: var(--v2-text-tertiary);
+}
+
+/* Comment cell */
+.v2-rt-comment {
+    font-size: 12px;
+    color: var(--v2-text-secondary);
+    position: relative;
+}
+
+.v2-rt-comment-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    cursor: default;
+}
+
+/* Hover tooltip for full comment */
+.v2-rt-comment-text:hover {
+    position: relative;
+}
+
+.v2-rt-comment-text:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 4px;
+    padding: 8px 10px;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 12px;
+    color: var(--v2-text-primary);
+    white-space: normal;
+    word-wrap: break-word;
+    max-width: 250px;
+    min-width: 150px;
+    z-index: 100;
+    line-height: 1.4;
+}
+
+/* Row states */
+.v2-rt-row.v2-rt-approved {
+    background: rgba(34, 197, 94, 0.05);
+}
+
+.v2-rt-row.v2-rt-sent-back {
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.v2-rt-row.v2-rt-current {
+    background: rgba(245, 158, 11, 0.15);
+}
+
+/* Review button in table */
+.v2-rt-review-btn {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: white;
+    color: var(--v2-accent);
+    border: 1px solid var(--v2-accent);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-rt-review-btn:hover {
+    background: var(--v2-accent);
+    color: white;
+}
+
+.v2-rt-review-btn svg {
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
+}
+
+/* Button styles for approval actions */
+.v2-btn-success {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--v2-success);
+    color: white;
+    border: none;
+    border-radius: var(--v2-input-radius);
+    font-size: var(--v2-small-size);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-btn-success:hover {
+    background: #16a34a;
+}
+
+.v2-btn-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--v2-warning);
+    color: white;
+    border: none;
+    border-radius: var(--v2-input-radius);
+    font-size: var(--v2-small-size);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-btn-warning:hover {
+    background: #d97706;
+}
+
+.v2-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--v2-bg-primary);
+    color: var(--v2-text-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: var(--v2-input-radius);
+    font-size: var(--v2-small-size);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-btn-secondary:hover {
+    background: var(--v2-bg-secondary);
+    border-color: var(--v2-border-hover);
+}
+
+.v2-btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* Send back comment section */
+.v2-send-back-comment {
+    margin-top: var(--v2-space-md);
+    padding-top: var(--v2-space-md);
+    border-top: 1px solid var(--v2-border-color);
+}
+
+.v2-send-back-actions {
+    display: flex;
+    gap: var(--v2-space-sm);
+    margin-top: var(--v2-space-sm);
+    justify-content: flex-end;
+}
+
+/* Completion indicator */
+.v2-routing-complete-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    margin-bottom: var(--v2-space-sm);
+    background: var(--v2-success-light);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: var(--v2-input-radius);
+    color: #15803d;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.v2-routing-complete-badge svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .v2-btn-success,
+    .v2-btn-warning {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ==========================================================================
+   17. Staff Assignment Dropdown
+   ========================================================================== */
+
+.v2-staff-assignment-container {
+    position: relative;
+}
+
+/* Staff container in Involved Parties tab - flex layout */
+.v2-staff-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--v2-space-sm);
+    align-items: center;
+}
+
+.v2-staff-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--v2-space-sm);
+    margin-bottom: var(--v2-space-sm);
+}
+
+.v2-staff-list:empty {
+    display: none;
+}
+
+.v2-staff-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.v2-staff-dropdown {
+    position: fixed;
+    min-width: 220px;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    display: none;
+}
+
+.v2-staff-dropdown.visible {
+    display: block;
+}
+
+.v2-staff-dropdown-header {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--v2-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--v2-border-color);
+    background: var(--v2-bg-secondary);
+}
+
+.v2-staff-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+}
+
+.v2-staff-dropdown-item:hover,
+.v2-staff-dropdown-item.kb-active {
+    background: var(--v2-bg-secondary);
+    font-weight: 700;
+}
+
+.v2-staff-dropdown-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--v2-bg-tertiary);
+}
+
+.v2-staff-dropdown-item.disabled:hover {
+    background: var(--v2-bg-tertiary);
+}
+
+.v2-staff-dropdown-item svg {
+    width: 16px;
+    height: 16px;
+    color: var(--v2-text-tertiary);
+}
+
+.v2-staff-dropdown-item .v2-staff-check {
+    margin-left: auto;
+    color: var(--v2-success);
+}
+
+.v2-staff-dropdown-empty {
+    padding: 16px 12px;
+    text-align: center;
+    color: var(--v2-text-tertiary);
+    font-size: var(--v2-small-size);
+}
+
+/* ==========================================================================
+   18. Routing Builder (rendered inside the routing popup)
+   ========================================================================== */
+
+.v2-routing-stages {
+    margin-bottom: 12px;
+}
+
+.v2-routing-stage-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.v2-routing-stage-item:last-child {
+    margin-bottom: 0;
+}
+
+.v2-routing-stage-number {
+    width: 26px;
+    height: 26px;
+    background: var(--v2-accent);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.v2-routing-stage-dropdown-wrapper {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+}
+
+.v2-routing-stage-trigger {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 30px 0 12px;
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    background: var(--v2-bg-primary);
+    font-size: var(--v2-small-size);
+    font-weight: 500;
+    color: var(--v2-text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.v2-routing-stage-trigger:hover {
+    border-color: var(--v2-text-tertiary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.v2-routing-stage-dropdown-wrapper.open .v2-routing-stage-trigger {
+    border-color: var(--v2-accent);
+    box-shadow: 0 0 0 2px var(--v2-accent-light);
+}
+
+.v2-routing-stage-trigger.placeholder {
+    color: var(--v2-text-tertiary);
+}
+
+.v2-routing-stage-menu {
+    position: fixed;
+    display: none;
+    min-width: 180px;
+    max-height: 240px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    z-index: 99999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.v2-routing-stage-dropdown-wrapper.open .v2-routing-stage-menu {
+    display: block;
+}
+
+.v2-routing-stage-option {
+    padding: 6px 12px;
+    font-size: var(--v2-small-size);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+    color: var(--v2-text-primary);
+    background: white;
+}
+
+.v2-routing-stage-option:last-child {
+    border-bottom: none;
+}
+
+.v2-routing-stage-option:hover {
+    background: #f3f4f6;
+}
+
+.v2-routing-stage-option.selected {
+    font-weight: 600;
+    color: var(--v2-accent);
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.v2-routing-stage-option:focus,
+.v2-routing-stage-option:focus-visible,
+.v2-routing-stage-menu:focus,
+.v2-routing-stage-menu:focus-visible {
+    outline: none;
+}
+
+.v2-routing-stage-remove {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--v2-text-tertiary);
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.v2-routing-stage-remove:hover {
+    background: var(--v2-important-light);
+    color: var(--v2-important);
+}
+
+.v2-routing-stage-remove svg {
+    width: 16px;
+    height: 16px;
+}
+
+.v2-add-stage-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--v2-bg-primary);
+    border: 1px dashed var(--v2-border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-secondary);
+    transition: all 0.15s ease;
+    margin-bottom: 16px;
+}
+
+.v2-add-stage-btn:hover {
+    background: var(--v2-bg-secondary);
+    border-color: var(--v2-accent);
+    color: var(--v2-accent);
+}
+
+/* Creator stage in routing builder */
+.v2-stage-creator {
+    background: var(--v2-accent-light);
+    border-color: var(--v2-accent);
+}
+
+.v2-routing-stage-label {
+    flex: 1;
+    font-size: var(--v2-body-size);
+    color: var(--v2-text-primary);
+}
+
+.v2-routing-stage-badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 3px 8px;
+    background: var(--v2-accent);
+    color: white;
+    border-radius: 10px;
+}
+
+/* Routing builder popup — reuses the .v2-approval-popup shell, sized just
+   under the event editing modal (560px / 90vh) with a scrollable body. */
+.v2-routing-popup {
+    max-width: 580px;
+    height: 85vh;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.v2-routing-popup-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    background: var(--v2-bg-secondary);
+}
+
+/* Save & Start Review uses the accent color (not the success green) */
+#v2-routing-save {
+    background: var(--v2-accent);
+}
+
+#v2-routing-save:hover {
+    background: var(--v2-accent);
+    filter: brightness(0.93);
+}
+
+/* With the End Review (left) option removed, keep the actions right-aligned */
+.v2-approval-popup-actions-end {
+    justify-content: flex-end;
+}
+
+/* Review Event popup: Approve uses the accent color (not success green) */
+#v2-approval-popup-approve {
+    background: var(--v2-accent);
+}
+
+#v2-approval-popup-approve:hover {
+    background: var(--v2-accent);
+    filter: brightness(0.93);
+}
+
+/* ---- Saved routes (routing presets) bar -------------------------------- */
+.v2-routing-presets-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.v2-routing-presets-dropdown {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.v2-routing-presets-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--v2-text-secondary);
+    font-size: var(--v2-small-size);
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.v2-routing-presets-trigger:hover {
+    border-color: var(--v2-text-tertiary);
+}
+
+.v2-routing-presets-dropdown.has-active .v2-routing-presets-trigger {
+    border-color: var(--v2-accent);
+    color: var(--v2-accent);
+}
+
+.v2-routing-presets-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.v2-routing-presets-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.v2-routing-presets-chevron {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+.v2-routing-presets-dropdown.open .v2-routing-presets-chevron {
+    transform: rotate(180deg);
+}
+
+/* Menu reads as a seamless continuation of the trigger: no gap, shared border,
+   squared-off top. Absolutely positioned so it overlays (never pushes content). */
+.v2-routing-presets-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: none;
+    background: var(--v2-bg-primary);
+    border: 1px solid var(--v2-border-color);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+    z-index: 20;
+}
+
+.v2-routing-presets-dropdown.open .v2-routing-presets-menu {
+    display: block;
+}
+
+/* Square the trigger's bottom corners while open so it joins the menu cleanly */
+.v2-routing-presets-dropdown.open .v2-routing-presets-trigger {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.v2-routing-presets-list {
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.v2-routing-presets-empty {
+    padding: 10px 12px;
+    font-size: var(--v2-small-size);
+    color: var(--v2-text-tertiary);
+    text-align: center;
+}
+
+.v2-routing-preset-item {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    border-radius: 6px;
+}
+
+.v2-routing-preset-item:hover {
+    background: var(--v2-bg-secondary);
+}
+
+.v2-routing-preset-item.active {
+    background: var(--v2-accent-light);
+}
+
+.v2-routing-preset-apply {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    padding: 7px 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: var(--v2-small-size);
+    font-weight: 500;
+    color: var(--v2-text-primary);
+}
+
+.v2-routing-preset-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.v2-routing-preset-default,
+.v2-routing-preset-delete {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--v2-text-tertiary);
+    transition: all 0.15s ease;
+}
+
+.v2-routing-preset-default svg,
+.v2-routing-preset-delete svg {
+    width: 15px;
+    height: 15px;
+}
+
+.v2-routing-preset-default:hover {
+    color: #d97706;
+}
+
+.v2-routing-preset-default.is-default {
+    color: #f59e0b;
+}
+
+.v2-routing-preset-delete:hover {
+    background: var(--v2-important-light);
+    color: var(--v2-important);
+}
+
+/* Save-as-preset button + inline name form */
+.v2-routing-presets-save {
+    flex-shrink: 0;
+}
+
+.v2-routing-preset-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 12px;
+    background: var(--v2-bg-secondary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: var(--v2-small-size);
+    font-weight: 500;
+    color: var(--v2-text-secondary);
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.v2-routing-preset-save-btn:hover {
+    border-color: var(--v2-accent);
+    color: var(--v2-accent);
+}
+
+.v2-routing-preset-save-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.v2-routing-preset-save-form {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.v2-routing-preset-name-input {
+    height: 34px;
+    width: 150px;
+    padding: 0 10px;
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    font-size: var(--v2-small-size);
+    background: var(--v2-bg-primary);
+    color: var(--v2-text-primary);
+}
+
+.v2-routing-preset-name-input:focus {
+    outline: none;
+    border-color: var(--v2-accent);
+    box-shadow: 0 0 0 2px var(--v2-accent-light);
+}
+
+.v2-routing-preset-name-confirm,
+.v2-routing-preset-name-cancel {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--v2-border-color);
+    border-radius: 6px;
+    background: var(--v2-bg-primary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-routing-preset-name-confirm {
+    color: var(--v2-accent);
+    border-color: var(--v2-accent);
+}
+
+.v2-routing-preset-name-confirm:hover {
+    background: var(--v2-accent-light);
+}
+
+.v2-routing-preset-name-cancel {
+    color: var(--v2-text-tertiary);
+}
+
+.v2-routing-preset-name-cancel:hover {
+    background: var(--v2-bg-secondary);
+    color: var(--v2-text-primary);
+}
+
+.v2-routing-preset-name-confirm svg,
+.v2-routing-preset-name-cancel svg {
+    width: 15px;
+    height: 15px;
+}
+
+/* Connector between two reviewers: toggles a step boundary ("then") vs a
+   parallel join ("and"). Neutral chip styling, no strong color. */
+.v2-routing-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+}
+
+/* Static "then" connector (non-interactive while parallel is disabled) */
+.v2-connector-static {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--v2-text-tertiary);
+}
+
+.v2-connector-static svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.v2-connector-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: var(--v2-bg-secondary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--v2-text-secondary);
+    transition: all 0.15s ease;
+}
+
+.v2-connector-toggle:hover {
+    border-color: var(--v2-accent);
+    color: var(--v2-accent);
+}
+
+.v2-connector-toggle svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}
+
+.v2-connector-and .v2-connector-toggle {
+    color: var(--v2-text-primary);
+}
+
+/* All-vs-any rule selector shown once per parallel group */
+.v2-rule-toggle {
+    display: inline-flex;
+    border: 1px solid var(--v2-border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.v2-rule-opt {
+    padding: 4px 10px;
+    background: var(--v2-bg-primary);
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--v2-text-secondary);
+    transition: all 0.15s ease;
+}
+
+.v2-rule-opt + .v2-rule-opt {
+    border-left: 1px solid var(--v2-border-color);
+}
+
+.v2-rule-opt:hover {
+    background: var(--v2-bg-secondary);
+}
+
+.v2-rule-opt.active {
+    background: var(--v2-accent-light);
+    color: var(--v2-accent);
+    font-weight: 600;
+}
+
+/* Continuation member of a parallel group — no filled step number */
+.v2-routing-stage-number-cont {
+    background: transparent;
+    color: var(--v2-text-tertiary);
+}
+
+/* ==========================================================================
+   19. Review Button in Action Bar
+   ========================================================================== */
+
+.v2-review-group {
+    position: relative;
+}
+
+/* Review button used to get an accent-blue "needs action" highlight; design
+   now wants it visually identical to Show Email, so the rule is a no-op. */
+.v2-action-btn.v2-needs-action {
+    /* inherits the default .v2-action-btn appearance and hover state */
+}
+
+/* Disabled state for Review button */
+.v2-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.v2-action-btn:disabled:hover {
+    background: transparent;
+    color: var(--v2-text-secondary);
+}
+
+/* ==========================================================================
+   20. Approval Review Popup
+   ========================================================================== */
+
+.v2-approval-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.v2-approval-popup-overlay.visible {
+    display: flex;
+}
+
+/* Match the event editing modal's surface: same radius variable, same
+   shadow weight, same border. No fade or scale transition. */
+.v2-approval-popup {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    background: var(--v2-bg-primary);
+    border-radius: var(--v2-modal-border-radius);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--v2-border-color);
+}
+
+.v2-approval-popup-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--v2-text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.v2-approval-popup-close:hover {
+    background: var(--v2-bg-tertiary);
+    color: var(--v2-text-primary);
+}
+
+.v2-approval-popup-close svg {
+    width: 18px;
+    height: 18px;
+}
+
+.v2-approval-popup-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--v2-border-color);
+}
+
+.v2-approval-popup-header svg {
+    width: 24px;
+    height: 24px;
+    color: var(--v2-accent);
+}
+
+.v2-approval-popup-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--v2-text-primary);
+}
+
+.v2-approval-popup-body {
+    padding: 20px 24px;
+}
+
+.v2-approval-popup-body .v2-field {
+    margin-bottom: 0;
+}
+
+.v2-approval-popup-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--v2-border-color);
+    background: var(--v2-bg-secondary);
+    border-radius: 0 0 var(--v2-modal-border-radius) var(--v2-modal-border-radius);
+}
+
+.v2-approval-popup-right-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* Warning button style */
+.v2-btn-warning {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+    background: var(--v2-warning);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.v2-btn-warning:hover {
+    background: #d97706;
+}
+
+.v2-btn-warning:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Cancel Review section - now inline with other buttons */
+.v2-approval-popup-cancel-section {
+    /* No padding needed when inline */
+}
+
+/* Red danger button */
+.v2-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+    background: var(--v2-important);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-btn-danger:hover {
+    background: #b91c1c;
+}
+
+.v2-btn-danger svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Field label row - aligns label and action button */
+.v2-field-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+/* Remove routing button - small danger button in label row */
+/* Icon-only X button with the app's standard data-tooltip pill on hover. */
+.v2-remove-routing-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    color: var(--v2-text-tertiary);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.v2-remove-routing-btn:hover {
+    background: var(--v2-bg-tertiary);
+    color: var(--v2-text-primary);
+}
+
+.v2-remove-routing-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* The remove-routing button's tooltip is rendered by JS as a portaled
+   .v2-floating-tooltip (position:fixed, top layer) so it can't clip against the
+   modal's overflow edges. See _showFloatingTooltip(). */
+.v2-floating-tooltip {
+    position: fixed;
+    z-index: 2147483647;
+    display: none;
+    padding: 4px 10px;
+    background: var(--v2-text-primary);
+    color: var(--v2-bg-primary);
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.v2-floating-tooltip.visible {
+    opacity: 1;
+}
+
+.v2-floating-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--v2-text-primary);
+}
+
+/* ==========================================================================
+   Read-Only Event View Modal
+   A compact, single-panel view for staff viewing events they're not assigned to
+   ========================================================================== */
+
+/* ===== Read-only event details modal ===== */
+
+.v2-readonly-overlay {
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.v2-readonly-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.v2-readonly-modal {
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100vh - 120px);
+    background: var(--v2-bg-primary);
+    border-radius: var(--v2-modal-border-radius);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.2s ease;
+    border: 1px solid var(--v2-border-color);
+}
+
+.v2-readonly-overlay.active .v2-readonly-modal {
+    transform: scale(1);
+}
+
+/* --- Header --- */
+
+.v2-readonly-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--v2-border-color);
+    gap: 16px;
+}
+
+.v2-readonly-header-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.v2-readonly-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--v2-text-primary);
+    margin: 0;
+    line-height: 1.3;
+    word-wrap: break-word;
+}
+
+.v2-readonly-org {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--v2-text-secondary);
+    margin: 4px 0 0;
+}
+
+/* Header right — view-only icon + close button */
+.v2-readonly-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.v2-readonly-viewonly-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: var(--v2-text-tertiary);
+}
+
+.v2-readonly-viewonly-badge svg {
+    width: 16px;
+    height: 16px;
+}
+
+.v2-readonly-close {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: var(--v2-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-readonly-close:hover {
+    background: var(--v2-bg-tertiary);
+    color: var(--v2-text-primary);
+}
+
+.v2-readonly-close svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Status badge — semantic colors */
+.v2-readonly-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    text-transform: capitalize;
+    margin-top: 8px;
+}
+
+.v2-readonly-status.status-received { background-color: var(--status-received, #3b82f6); color: white; }
+.v2-readonly-status.status-hold { background-color: var(--status-hold, #f59e0b); color: white; }
+.v2-readonly-status.status-referred { background-color: var(--status-referred, #8b5cf6); color: white; }
+.v2-readonly-status.status-fyied { background-color: var(--status-fyied, #f97316); color: white; }
+.v2-readonly-status.status-scheduling_in_progress { background-color: var(--status-scheduling_in_progress, #14b8a6); color: white; }
+.v2-readonly-status.status-scheduled { background-color: var(--status-scheduled, #10b981); color: white; }
+.v2-readonly-status.status-rsvped { background-color: var(--status-rsvped, #06b6d4); color: white; }
+.v2-readonly-status.status-regrets_sent { background-color: var(--status-regrets_sent, #ef4444); color: white; }
+.v2-readonly-status.status-ignored { background-color: var(--status-ignored, #64748b); color: white; }
+.v2-readonly-status.status-canceled { background-color: var(--status-canceled, #6b7280); color: white; }
+
+/* --- Content area --- */
+
+.v2-readonly-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* --- Primary tier --- */
+
+.v2-readonly-primary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--v2-border-color);
+}
+
+.v2-readonly-datetime {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--v2-text-primary);
+    line-height: 1.4;
+}
+
+.v2-readonly-relative-time {
+    font-size: 12px;
+    color: var(--v2-text-tertiary);
+    font-weight: 500;
+}
+
+.v2-readonly-location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--v2-text-secondary);
+    margin-top: 4px;
+}
+
+.v2-readonly-location svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    color: var(--v2-text-tertiary);
+}
+
+/* Tertiary: Type · Format inline */
+.v2-readonly-type-format {
+    font-size: 13px;
+    color: var(--v2-text-tertiary);
+    margin-top: 2px;
+}
+
+/* --- Secondary tier --- */
+
+.v2-readonly-secondary {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.v2-readonly-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--v2-border-color);
+}
+
+.v2-readonly-section:last-child {
+    border-bottom: none;
+}
+
+/* Section labels — sentence case, muted */
+.v2-readonly-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--v2-text-tertiary);
+}
+
+.v2-readonly-value {
+    font-size: 14px;
+    color: var(--v2-text-primary);
+    line-height: 1.5;
+}
+
+.v2-readonly-value.multiline {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.v2-readonly-value a {
+    color: var(--v2-accent);
+    text-decoration: none;
+}
+
+.v2-readonly-value a:hover {
+    text-decoration: underline;
+}
+
+/* Tags — actionable with hover state */
+.v2-readonly-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.v2-readonly-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    background: var(--v2-bg-secondary);
+    border: 1px solid var(--v2-border-color);
+    border-radius: 12px;
+    color: var(--v2-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-readonly-tag:hover,
+.v2-readonly-tag:focus-visible {
+    background: var(--v2-accent-light, rgba(43, 94, 160, 0.08));
+    border-color: var(--v2-accent);
+    color: var(--v2-accent);
+    outline: none;
+}
+
+/* Staff list */
+.v2-readonly-staff-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.v2-readonly-staff-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    background: var(--v2-accent-light);
+    border-radius: 12px;
+    color: var(--v2-accent);
+}
+
+.v2-readonly-staff-pill svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* Participants */
+.v2-readonly-participants {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.v2-readonly-participant {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--v2-text-primary);
+}
+
+.v2-readonly-participant svg {
+    width: 14px;
+    height: 14px;
+    color: var(--v2-text-tertiary);
+    flex-shrink: 0;
+}
+
+/* --- Missing fields collapsible --- */
+
+.v2-readonly-missing {
+    margin-top: 12px;
+    border-top: 1px solid var(--v2-border-color);
+    padding-top: 8px;
+}
+
+.v2-readonly-missing-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 0;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--v2-text-tertiary);
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.v2-readonly-missing-toggle:hover {
+    color: var(--v2-text-secondary);
+}
+
+.v2-readonly-missing-chevron {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+}
+
+.v2-readonly-missing-chevron.rotated {
+    transform: rotate(180deg);
+}
+
+.v2-readonly-missing-list {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 4px 0 4px 8px;
+}
+
+.v2-readonly-missing-list.expanded {
+    display: block;
+}
+
+.v2-readonly-missing-list li {
+    font-size: 12px;
+    color: var(--v2-text-tertiary);
+    padding: 2px 0;
+}
+
+/* --- Footer --- */
+
+.v2-readonly-footer {
+    padding: 12px 24px;
+    border-top: 1px solid var(--v2-border-color);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Copy Details — ghost/outline secondary button */
+.v2-readonly-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--v2-text-secondary);
+    background: transparent;
+    border: 1px solid var(--v2-border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-readonly-copy-btn:hover {
+    background: var(--v2-bg-tertiary);
+    color: var(--v2-text-primary);
+}
+
+.v2-readonly-copy-btn:focus-visible {
+    outline: 2px solid var(--v2-accent);
+    outline-offset: 2px;
+}
+
+.v2-readonly-copy-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* View on Calendar — primary filled button */
+.v2-readonly-calendar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    color: white;
+    background: var(--v2-accent);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.v2-readonly-calendar-btn:hover {
+    filter: brightness(1.1);
+}
+
+.v2-readonly-calendar-btn:focus-visible {
+    outline: 2px solid var(--v2-accent);
+    outline-offset: 2px;
+}
+
+.v2-readonly-calendar-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 500px) {
+    .v2-readonly-overlay {
+        padding-top: 0;
+    }
+
+    .v2-readonly-modal {
+        max-width: 100%;
+        max-height: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+
+    .v2-readonly-header,
+    .v2-readonly-content,
+    .v2-readonly-footer {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+
+
+/* ==========================================================================
+   Email Panel — Thread Section (AI Toolbar + Composer now in floating popup)
+   ========================================================================== */
+
+/* Thread Section */
+.v2-email-thread-section {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* AI + Template Toolbar */
+.v2-email-ai-toolbar {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--v2-input-border, #e2e8f0);
+    border-bottom: 1px solid var(--v2-input-border, #e2e8f0);
+    background: var(--v2-bg-secondary, #f8fafc);
+    padding: var(--v2-space-sm) var(--v2-space-md);
+}
+
+.v2-ai-toolbar-row {
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm);
+}
+
+/* Custom template select dropdown */
+.v2-template-select-wrapper {
+    flex: 1;
+    position: relative;
+}
+
+.v2-template-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    height: 32px;
+    padding: 0 var(--v2-space-sm);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--v2-input-radius);
+    background: var(--v2-bg-primary, #fff);
+    color: var(--v2-text-primary, #1e293b);
+    font-size: var(--v2-small-size, 13px);
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.v2-template-select-trigger:hover {
+    border-color: var(--accent-color, #2b5ea0);
+}
+
+.v2-template-select-wrapper.open .v2-template-select-trigger {
+    border-color: var(--accent-color, #2b5ea0);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, #2b5ea0) 15%, transparent);
+}
+
+.v2-template-select-value {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+.v2-template-select-arrow {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    color: var(--v2-text-tertiary, #94a3b8);
+    transition: transform 0.2s ease;
+}
+
+.v2-template-select-wrapper.open .v2-template-select-arrow {
+    transform: rotate(180deg);
+}
+
+.v2-template-select-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    min-width: 100%;
+    max-height: 280px;
+    overflow-y: auto;
+    background: var(--v2-bg-primary, #fff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: var(--v2-input-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 300;
+    padding: 4px 0;
+}
+
+.v2-template-select-wrapper.open .v2-template-select-menu {
+    display: block;
+}
+
+.v2-template-select-group-label {
+    padding: 6px 12px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--v2-text-tertiary, #94a3b8);
+    pointer-events: none;
+}
+
+.v2-template-select-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    font-size: var(--v2-small-size, 13px);
+    font-family: inherit;
+    color: var(--v2-text-secondary, #64748b);
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.v2-template-select-option:hover {
+    background: color-mix(in srgb, var(--accent-color, #2b5ea0) 8%, transparent);
+    color: var(--accent-color, #2b5ea0);
+}
+
+.v2-template-select-option.selected {
+    color: var(--accent-color, #2b5ea0);
+    font-weight: 600;
+}
+
+.v2-template-select-option.selected::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 10px;
+    border: solid var(--accent-color, #2b5ea0);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-right: 2px;
+    flex-shrink: 0;
+}
+
+.v2-ai-suggest-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--v2-bg-primary, #fff);
+    color: var(--v2-text-secondary, #64748b);
+    border: 1px solid var(--v2-border-color, #e2e8f0);
+    border-radius: 8px;
+    font-size: var(--v2-small-size, 13px);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, box-shadow 0.15s, border-color 0.15s, color 0.15s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* The sparkles icon stays amber as the persistent "AI" cue */
+.v2-ai-suggest-btn .v2-ai-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: #eab308;
+}
+
+/* Amber glow only appears on hover */
+.v2-ai-suggest-btn:hover:not(:disabled) {
+    background: rgba(250, 204, 21, 0.18);
+    border-color: rgba(234, 179, 8, 0.7);
+    color: #a16207;
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.4), 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.v2-ai-suggest-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Refinement chips row */
+.v2-ai-refinement-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: var(--v2-space-sm);
+    flex-wrap: wrap;
+}
+
+.v2-refinement-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 16px;
+    background: var(--v2-bg-primary, #fff);
+    color: var(--v2-text-secondary, #64748b);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.v2-refinement-chip:hover:not(:disabled) {
+    border-color: var(--v2-accent, #2b5ea0);
+    color: var(--v2-accent, #2b5ea0);
+    background: var(--v2-accent-light, rgba(43, 94, 160, 0.1));
+}
+
+.v2-refinement-chip:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.v2-ai-remaining {
+    font-size: 11px;
+    color: var(--v2-text-tertiary, #94a3b8);
+    margin-left: auto;
+}
+
+/* Email Composer */
+.v2-email-composer {
+    display: flex;
+    flex-direction: column;
+    background: var(--v2-bg-primary, #fff);
+    position: relative;
+}
+
+.v2-composer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--v2-space-sm) var(--v2-space-md);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.v2-composer-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px var(--v2-space-md);
+}
+
+.v2-composer-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--v2-text-secondary, #64748b);
+    min-width: 40px;
+}
+
+.v2-composer-to {
+    font-size: var(--v2-small-size, 13px);
+    color: var(--v2-text-primary, #1e293b);
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    min-width: 0;
+    padding: 2px 0;
+    font-family: inherit;
+}
+
+.v2-composer-to:focus {
+    border-bottom: 1px solid var(--v2-accent, #204a80);
+}
+
+.v2-composer-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: var(--v2-small-size, 13px);
+    color: var(--v2-text-primary, #1e293b);
+    background: transparent;
+    padding: 4px 0;
+}
+
+.v2-composer-input.v2-composer-subject {
+    font-weight: 500;
+}
+
+.v2-composer-cc-btn {
+    font-size: 11px;
+    color: var(--v2-text-tertiary, #94a3b8);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.v2-composer-cc-fields {
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+/* Format bar */
+.v2-composer-format-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px var(--v2-space-md);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    background: var(--v2-bg-secondary, #f8fafc);
+}
+
+.v2-format-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--v2-text-secondary, #64748b);
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.v2-format-btn:hover {
+    background: var(--v2-bg-tertiary, #f1f5f9);
+    color: var(--v2-text-primary, #1e293b);
+}
+
+/* Composer body (contenteditable) — grows with content, parent scrolls */
+.v2-composer-body {
+    min-height: 120px;
+    padding: var(--v2-space-md);
+    font-size: var(--v2-body-size, 14px);
+    line-height: 1.6;
+    color: var(--v2-text-primary, #1e293b);
+    outline: none;
+}
+
+.v2-composer-body:empty:before {
+    content: attr(data-placeholder);
+    color: var(--v2-text-tertiary, #94a3b8);
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Restore list indentation/markers — the global `* { margin:0; padding:0 }`
+   reset strips them, so bullets/numbers wouldn't show or indent otherwise. */
+.v2-composer-body ul,
+.v2-composer-body ol {
+    margin: 0.4em 0;
+    padding-left: 1.6em;
+    list-style-position: outside;
+}
+
+.v2-composer-body ul { list-style-type: disc; }
+.v2-composer-body ol { list-style-type: decimal; }
+.v2-composer-body ul ul { list-style-type: circle; }
+.v2-composer-body ul ul ul { list-style-type: square; }
+
+.v2-composer-body li {
+    margin: 0.15em 0;
+}
+
+/* Signature area */
+.v2-composer-signature {
+    padding: 0 var(--v2-space-md) var(--v2-space-sm);
+    font-size: 12px;
+    color: var(--v2-text-tertiary, #94a3b8);
+    border-top: 1px solid var(--border-color, #e2e8f0);
+}
+
+.v2-signature-line {
+    padding: 2px 0;
+}
+
+/* Variable highlighting */
+.v2-template-var-unfilled {
+    background: rgba(245, 158, 11, 0.2);
+    border-radius: 2px;
+    padding: 1px 2px;
+    color: #b45309;
+}
+
+.v2-template-var-filled {
+    background: rgba(34, 197, 94, 0.15);
+    border-radius: 2px;
+    padding: 1px 2px;
+    color: #15803d;
+}
+
+/* Variable warning */
+.v2-composer-var-warning {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px var(--v2-space-md);
+    background: rgba(245, 158, 11, 0.1);
+    color: #b45309;
+    font-size: 12px;
+    border-top: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* Composer actions */
+.v2-composer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--v2-space-sm);
+    padding: var(--v2-space-sm) var(--v2-space-md);
+    border-top: 1px solid var(--border-color, #e2e8f0);
+    background: var(--v2-bg-secondary, #f8fafc);
+}
+
+.v2-composer-cancel-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 6px;
+    background: var(--v2-bg-primary, #fff);
+    color: var(--v2-text-secondary, #64748b);
+    font-size: var(--v2-small-size, 13px);
+    cursor: pointer;
+}
+
+.v2-composer-save-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 6px;
+    background: var(--v2-bg-primary, #fff);
+    color: var(--v2-text-primary, #1e293b);
+    font-size: var(--v2-small-size, 13px);
+    cursor: pointer;
+}
+
+.v2-composer-send-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 16px;
+    background: var(--v2-accent, #2b5ea0);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: var(--v2-small-size, 13px);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.v2-composer-send-btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--v2-accent, #2b5ea0) 88%, #000);
+}
+
+.v2-composer-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Loading indicator */
+.v2-composer-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.85);
+    z-index: 10;
+    font-size: var(--v2-small-size, 13px);
+    color: var(--v2-text-secondary, #64748b);
+}
+
+.v2-composer-loading-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color, #e2e8f0);
+    border-top-color: var(--v2-accent, #2b5ea0);
+    border-radius: 50%;
+    animation: v2-spin 0.6s linear infinite;
+}
+
+@keyframes v2-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Sent response styling in thread */
+.v2-email-item.v2-email-sent {
+    border-left: 3px solid var(--v2-accent, #2b5ea0);
+    background: var(--v2-accent-light, rgba(43, 94, 160, 0.05));
+}
+
+.v2-sent-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--v2-accent, #2b5ea0);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] .v2-email-ai-toolbar {
+    background: var(--bg-secondary, #1e293b);
+    border-color: var(--border-color, #334155);
+}
+
+[data-theme="dark"] .v2-template-select-trigger {
+    background: var(--bg-primary, #0f172a);
+    border-color: var(--border-color, #334155);
+    color: var(--text-primary, #f1f5f9);
+}
+
+[data-theme="dark"] .v2-template-select-menu {
+    background: var(--bg-primary, #0f172a);
+    border-color: var(--border-color, #334155);
+}
+
+[data-theme="dark"] .v2-email-composer {
+    background: var(--bg-primary, #0f172a);
+}
+
+[data-theme="dark"] .v2-composer-body {
+    color: var(--text-primary, #f1f5f9);
+}
+
+[data-theme="dark"] .v2-composer-loading {
+    background: rgba(15, 23, 42, 0.85);
+}
+
+[data-theme="dark"] .v2-template-var-unfilled {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+
+[data-theme="dark"] .v2-email-item.v2-email-sent {
+    background: rgba(43, 94, 160, 0.08);
+}
+
+/* ==========================================================================
+   Inline Email Composer (below email thread)
+   ========================================================================== */
+
+.v2-inline-composer-wrapper {
+    margin-top: var(--v2-space-lg, 16px);
+    border: 2px solid var(--v2-accent, #2b5ea0);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--v2-bg-primary, #fff);
+}
+
+.v2-inline-composer-wrapper .v2-email-ai-toolbar {
+    border-top: none;
+}
+
+[data-theme="dark"] .v2-inline-composer-wrapper {
+    background: var(--bg-primary, #0f172a);
+    border-color: var(--v2-accent, #2b5ea0);
+}
+
+/* ==========================================================================
+   Generate Draft Prompt Popup
+   ========================================================================== */
+
+.v2-draft-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 10200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.v2-draft-prompt-popup {
+    width: 460px;
+    max-width: 90vw;
+    background: var(--v2-bg-primary, #fff);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    border-radius: 12px;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.15),
+        0 0 0 2px rgba(234, 179, 8, 0.25),
+        0 0 20px rgba(234, 179, 8, 0.12);
+    overflow: hidden;
+}
+
+/* Plain (non-AI) variant — neutral, no amber glow */
+.v2-draft-prompt-popup.v2-plain-popup {
+    border: 1px solid var(--v2-border-color, #e2e8f0);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.v2-plain-popup .v2-draft-prompt-header {
+    background: var(--v2-bg-secondary, #f8fafc);
+    border-bottom: 1px solid var(--v2-border-color, #e2e8f0);
+}
+
+.v2-plain-popup .v2-draft-prompt-header svg {
+    color: var(--v2-text-secondary, #64748b);
+}
+
+.v2-draft-prompt-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    background: linear-gradient(to bottom, rgba(234, 179, 8, 0.12), rgba(234, 179, 8, 0.04));
+    border-bottom: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.v2-draft-prompt-header svg {
+    color: #ca8a04;
+    flex-shrink: 0;
+}
+
+.v2-draft-prompt-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--v2-text-primary, #1e293b);
+}
+
+.v2-draft-prompt-body {
+    padding: 16px 20px;
+}
+
+.v2-draft-prompt-body .v2-field-label {
+    margin-bottom: 6px;
+}
+
+.v2-draft-prompt-body .v2-textarea {
+    width: 100%;
+    resize: vertical;
+}
+
+.v2-draft-prompt-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--v2-space-sm, 8px);
+    padding: 12px 20px;
+    border-top: 1px solid var(--v2-border-color, #e2e8f0);
+    background: var(--v2-bg-secondary, #f8fafc);
+}
+
+/* Dark theme */
+[data-theme="dark"] .v2-draft-prompt-popup {
+    background: var(--bg-primary, #0f172a);
+    border-color: rgba(234, 179, 8, 0.3);
+}
+
+[data-theme="dark"] .v2-draft-prompt-header {
+    background: linear-gradient(to bottom, rgba(234, 179, 8, 0.1), rgba(234, 179, 8, 0.03));
+}
+
+[data-theme="dark"] .v2-draft-prompt-actions {
+    background: var(--bg-secondary, #1e293b);
+    border-color: var(--border-color, #334155);
+}
+
+[data-theme="dark"] .v2-ai-suggest-btn {
+    background: var(--v2-bg-primary, #1e293b);
+    color: var(--v2-text-secondary, #94a3b8);
+    border-color: var(--v2-border-color, #334155);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .v2-ai-suggest-btn:hover:not(:disabled) {
+    background: rgba(234, 179, 8, 0.18);
+    color: #fbbf24;
+    border-color: rgba(234, 179, 8, 0.6);
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.3), 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* ==========================================================================
+   Overlap Section (in modal)
+   ========================================================================== */
+
+.v2-overlap-section {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+/* Count chip inherits the .v2-field-label typography from its parent */
+.v2-overlap-count {
+    font: inherit;
+    color: inherit;
+}
+
+/* Inside the Event Details tab, mirror the time section's trailing
+   divider so there's a horizontal line both before and after the overlap
+   section, with matching breathing room. */
+.v2-tab-panel > .v2-overlap-section {
+    padding-bottom: var(--v2-space-lg);
+    margin-bottom: var(--v2-space-lg);
+    border-bottom: 1px solid var(--v2-border-color);
+}
+
+.v2-overlap-section .v2-field-label {
+    margin-bottom: 4px;
+}
+
+.v2-overlap-section .overlap-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--v2-bg-primary, #ffffff);
+    border: 1px solid var(--v2-input-border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.v2-overlap-section .overlap-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    font-size: 13px;
+    color: var(--v2-text-primary);
+}
+
+.v2-overlap-section .overlap-item:hover,
+.v2-overlap-section .overlap-item:focus-visible {
+    background: var(--v2-bg-tertiary, #f1f5f9);
+    outline: none;
+}
+
+.v2-overlap-section .overlap-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.v2-overlap-section .overlap-time {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--v2-text-tertiary, #9ca3af);
+    white-space: nowrap;
+}
+
+/* =========================================================================
+   Attachments
+   ========================================================================= */
+.v2-attachment-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v2-space-sm, 8px);
+}
+
+.v2-attachment-row {
+    display: flex;
+    align-items: center;
+    gap: var(--v2-space-sm, 8px);
+    padding: 6px 10px;
+    background: var(--v2-bg-primary, #ffffff);
+    border: 1px solid var(--v2-border-color, #e2e8f0);
+    border-radius: var(--v2-input-radius, 8px);
+}
+
+.v2-attachment-icon {
+    flex-shrink: 0;
+    color: var(--v2-text-secondary, #64748b);
+}
+
+.v2-attachment-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.v2-attachment-name {
+    font-size: var(--v2-small-size, 13px);
+    color: var(--v2-accent, #2b5ea0);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.v2-attachment-name:hover {
+    text-decoration: underline;
+}
+
+.v2-attachment-name--disabled {
+    color: var(--v2-text-secondary, #64748b);
+    pointer-events: none;
+}
+
+.v2-attachment-meta {
+    font-size: 11px;
+    color: var(--v2-text-tertiary, #94a3b8);
+}
+
+.v2-attachment-version {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--v2-text-tertiary, #94a3b8);
+}
+
+.v2-attachment-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 999px;
+}
+
+.v2-attachment-badge--scanning {
+    background: var(--v2-accent-light, rgba(43, 94, 160, 0.1));
+    color: var(--v2-accent, #2b5ea0);
+}
+
+.v2-attachment-badge--infected {
+    background: var(--v2-important-light, rgba(239, 68, 68, 0.1));
+    color: var(--v2-important, #ef4444);
+}
+
+.v2-attachment-controls {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.v2-attachment-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    color: var(--v2-text-secondary, #64748b);
+    cursor: pointer;
+}
+
+.v2-attachment-icon-btn:hover {
+    background: var(--v2-bg-tertiary, #f1f5f9);
+    color: var(--v2-text-primary, #1e293b);
+}
+
+.v2-attachment-icon-btn--danger:hover {
+    background: var(--v2-important-light, rgba(239, 68, 68, 0.1));
+    color: var(--v2-important, #ef4444);
+}
+
+.v2-attachment-empty-hint {
+    font-size: var(--v2-small-size, 13px);
+    color: var(--v2-text-tertiary, #94a3b8);
+    font-style: italic;
+}
+
+.v2-attachment-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--v2-space-xs, 4px);
+    margin-top: var(--v2-space-sm, 8px);
+    padding: 6px 12px;
+    border: 1px dashed var(--v2-border-hover, #cbd5e1);
+    background: var(--v2-bg-primary, #ffffff);
+    border-radius: var(--v2-input-radius, 8px);
+    font-size: var(--v2-small-size, 13px);
+    color: var(--v2-text-secondary, #64748b);
+    cursor: pointer;
+}
+
+.v2-attachment-add-btn:hover {
+    border-color: var(--v2-accent, #2b5ea0);
+    color: var(--v2-accent, #2b5ea0);
+}

@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Inbox{% endblock %}
+
+{% block body_class %}inbox-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/schedule-redesign.css' %}?v=9">
+<link rel="stylesheet" href="{% static 'css/inbox-redesign.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/event-editing-modal-v2.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Main Inbox Container - List-Detail Layout -->
+<div class="schedule-redesign-container inbox-container">
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="schedule-sidebar-overlay" id="inbox-sidebar-overlay"></div>
+
+    <!-- Full-width content area (header + panels) -->
+    <div class="schedule-content-area">
+        <!-- Shared Header Bar — spans full width above both panels -->
+        <header class="schedule-header-bar">
+            <!-- Page Title -->
+            <h1 class="schedule-page-title">Inbox</h1>
+
+            <!-- Search Container -->
+            <div class="schedule-search-container">
+                <svg class="schedule-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text"
+                       class="schedule-search-input"
+                       id="inbox-search-input"
+                       placeholder="Search inbox..."
+                       autocomplete="off">
+                <button class="schedule-search-clear" id="inbox-search-clear" aria-label="Clear search">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Filter icon button -->
+            <button class="schedule-filter-icon-btn" id="filters-toggle-btn" title="Filters" data-inbox-only>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+            </button>
+
+            <!-- Right-side controls group -->
+            <div class="schedule-header-right">
+                <!-- Show Resolved Items Checkbox -->
+                <div class="inbox-past-items-toggle" data-inbox-only>
+                    <label class="inbox-checkbox-label">
+                        <input type="checkbox" id="show-past-items">
+                        <span class="inbox-checkbox-text">Show resolved</span>
+                    </label>
+                </div>
+
+                <!-- Separator -->
+                <div class="inbox-header-separator" data-inbox-only></div>
+
+
+                <!-- Sort Dropdown -->
+                <div class="schedule-header-select" id="inbox-sort-select" data-value="-created">
+                    <button class="schedule-header-select-trigger" type="button">
+                        <span class="schedule-header-select-label">Sort:</span>
+                        <span class="schedule-header-select-value">Newest</span>
+                        <svg class="schedule-header-select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="schedule-header-select-menu">
+                        <div class="schedule-header-select-option selected" data-value="-created">Newest</div>
+                        <div class="schedule-header-select-option" data-value="created">Oldest</div>
+                    </div>
+                </div>
+                <!-- Inbox / Diverted segmented toggle (same control as Contacts) -->
+                <div class="contacts-tabs" role="tablist" aria-label="Inbox views">
+                    <button type="button" class="contacts-tab active" data-view="inbox" role="tab" aria-selected="true">Inbox
+                        <span class="schedule-tab-tooltip" aria-hidden="true">
+                            <kbd class="kbd-key">Shift</kbd>
+                            <span class="kbd-plus">+</span>
+                            <kbd class="kbd-key kbd-arrow">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 5 5 12 12 19"></polyline></svg>
+                            </kbd>
+                            <span class="kbd-sep">/</span>
+                            <kbd class="kbd-key kbd-arrow">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </kbd>
+                        </span>
+                    </button>
+                    <button type="button" class="contacts-tab" data-view="diverted" role="tab" aria-selected="false">Diverted
+                        <span class="schedule-tab-tooltip" aria-hidden="true">
+                            <kbd class="kbd-key">Shift</kbd>
+                            <span class="kbd-plus">+</span>
+                            <kbd class="kbd-key kbd-arrow">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 5 5 12 12 19"></polyline></svg>
+                            </kbd>
+                            <span class="kbd-sep">/</span>
+                            <kbd class="kbd-key kbd-arrow">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </kbd>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Below-header area: filter sidebar + list-detail panels -->
+        <div class="schedule-below-header">
+            <!-- Filter Sidebar (opens from left, below header) -->
+            <aside class="schedule-filter-sidebar collapsed" id="inbox-filter-sidebar">
+                <div class="sidebar-header">
+                    <h3>Filters</h3>
+                    <button class="sidebar-toggle" id="sidebar-close-btn" aria-label="Close filters">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="sidebar-content" id="filter-sidebar-content">
+                    <!-- Filter sections will be rendered by JavaScript -->
+                </div>
+            </aside>
+
+            <!-- List-Detail Wrapper: inbox list + detail panel side by side -->
+            <div class="schedule-list-detail-wrapper">
+                <!-- Left Panel: Inbox List -->
+                <main class="schedule-main-area">
+                    <!-- Inbox View Container -->
+                    <div class="schedule-view-container" id="inbox-view-container">
+                        <!-- Event list container — skeleton placeholders rendered by JS during fetch -->
+                        <div id="inbox-event-list"></div>
+
+                        <!-- Load More button -->
+                        <div class="schedule-load-more" id="inbox-load-more" style="display: none;">
+                            <button class="schedule-load-more-btn" id="load-more-btn">Load More</button>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- Right Panel: Detail Panel (always visible) -->
+                <aside class="schedule-detail-panel" id="inbox-detail-panel">
+                    <div class="detail-panel-content" id="inbox-detail-panel-content"></div>
+                    <button type="button" class="detail-panel-collapse-btn" aria-label="Collapse details panel" title="Collapse">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </aside>
+                <button type="button" class="detail-panel-restore-btn" aria-label="Expand details panel" title="Expand">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pass data to JavaScript -->
+<script>
+    window.inboxConfig = {
+        filterChoices: {{ filter_choices_json|safe|default:'{}' }},
+        csrfToken: '{{ csrf_token }}',
+        apiUrl: '/api/events/',
+        approvalApiUrl: '/api/events/needs-my-approval/',
+        eventChoicesUrl: '/api/event-choices/',
+        eventEditingUrl: '/event-editing/'
+    };
+</script>
+
+<!-- Inbox Redesign JavaScript -->
+<script src="{% static 'js/inbox-redesign.js' %}?v=36"></script>
+
+<!-- Detail panel collapse/restore -->
+<script src="{% static 'js/detail-panel-collapse.js' %}"></script>
+
+<script>
+    // Initialize inbox on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof InboxRedesign !== 'undefined') {
+            window.inboxRedesign = new InboxRedesign(window.inboxConfig);
+            window.inboxRedesign.init();
+        } else {
+            console.error('InboxRedesign class not found');
+        }
+    });
+</script>
+{% endblock %}

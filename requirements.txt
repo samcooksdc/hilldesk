@@ -1,0 +1,102 @@
+# =============================================================================
+# HillDesk - Congressional Scheduling System
+# Requirements File
+# =============================================================================
+# This file contains all Python dependencies for HillDesk.
+#
+# INSTALLATION:
+#   pip install -r requirements.txt                 # Base installation
+#   pip install -r requirements.txt -r requirements-dev.txt  # Development
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Django Core
+# -----------------------------------------------------------------------------
+Django>=5.2,<6.0
+djangorestframework>=3.15.0
+django-cors-headers>=4.0.0
+django-oauth-toolkit>=3.0.0
+django-extensions>=3.2.0
+
+# -----------------------------------------------------------------------------
+# Serving (production container)
+# -----------------------------------------------------------------------------
+gunicorn>=22.0.0            # WSGI server for the production image
+whitenoise>=6.6.0           # Serves collected static files without S3/nginx
+
+# -----------------------------------------------------------------------------
+# Database
+# -----------------------------------------------------------------------------
+psycopg2-binary>=2.9.0      # PostgreSQL adapter
+
+# -----------------------------------------------------------------------------
+# Caching & Task Queue
+# -----------------------------------------------------------------------------
+redis>=5.0.0
+django-redis>=5.4.0
+celery>=5.3.0
+
+# -----------------------------------------------------------------------------
+# Authentication & Security
+# -----------------------------------------------------------------------------
+pyotp>=2.9.0                # MFA/TOTP support
+qrcode[pil]>=7.4.0          # QR code generation for MFA
+cryptography>=42.0.0        # Encryption for sensitive fields
+pyjwt>=2.8.0                # JWT handling
+
+# Azure AD / OIDC (Production Authentication)
+mozilla-django-oidc>=3.0.0
+
+# -----------------------------------------------------------------------------
+# AWS SDK (Production LLM via Bedrock)
+# -----------------------------------------------------------------------------
+boto3>=1.34.0               # AWS SDK for Python
+
+# -----------------------------------------------------------------------------
+# Microsoft Graph API
+# -----------------------------------------------------------------------------
+requests>=2.31.0
+requests-oauthlib>=1.3.0
+msal>=1.26.0                # Microsoft Authentication Library
+
+# -----------------------------------------------------------------------------
+# Email Ingestion Pipeline (all pure-Python, no network egress)
+# -----------------------------------------------------------------------------
+icalendar>=5.0.0            # Deterministic calendar-object (.ics) parsing
+pypdf>=4.0.0                # PDF attachment text harvest
+python-docx>=1.1.0          # Word attachment text harvest (also via docxtpl)
+jsonschema>=4.20.0          # Extraction schema validation (single-call contract)
+
+# -----------------------------------------------------------------------------
+# Utilities
+# -----------------------------------------------------------------------------
+python-dateutil>=2.8.0
+python-decouple>=3.8        # Environment configuration
+python-dotenv>=1.0.0        # .env file loading
+
+# -----------------------------------------------------------------------------
+# Document Export
+# -----------------------------------------------------------------------------
+docxtpl>=0.16.0                 # Word document template rendering
+
+# -----------------------------------------------------------------------------
+# Content Security Policy
+# -----------------------------------------------------------------------------
+django-csp>=3.8
+
+# -----------------------------------------------------------------------------
+# Rate Limiting
+# -----------------------------------------------------------------------------
+django-ratelimit>=4.1.0
+
+# =============================================================================
+# DEVELOPMENT DEPENDENCIES
+# =============================================================================
+# NOTE: The following dependency is TEMPORARY and must be removed before
+# production deployment. It is only used for local LLM API testing.
+#
+# Uncomment ONLY for local development with anthropic_dev provider:
+# anthropic>=0.18.0
+#
+# =============================================================================

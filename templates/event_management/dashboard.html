@@ -1,0 +1,735 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - HillDesk{% endblock %}
+
+{% block body_class %}dashboard-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard-redesign.css' %}?v=71">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-redesign">
+    <!-- Dashboard Header Bar -->
+    <div class="dashboard-header-bar">
+        <div class="dashboard-header-titlewrap">
+            <h1 class="dashboard-page-title">Dashboard</h1>
+            <span class="dashboard-page-sep" aria-hidden="true">·</span>
+            <a href="{% url 'event_management:events' %}" class="dashboard-page-date">{{ today_date|date:"l, F j, Y" }}</a>
+        </div>
+        <div class="dashboard-header-actions">
+            <button type="button" onclick="createNewEvent()" class="dashboard-header-btn dashboard-header-btn-create" data-tooltip="Create Event">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+            </button>
+            <a href="{% url 'event_management:inbox' %}" class="dashboard-header-btn" data-tooltip="Inbox">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                    <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                </svg>
+            </a>
+            <a href="{% url 'event_management:events' %}" class="dashboard-header-btn" data-tooltip="Schedule">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="21,8 21,21 3,21 3,8"></polyline>
+                    <rect x="1" y="3" width="22" height="5"></rect>
+                    <line x1="10" y1="12" x2="14" y2="12"></line>
+                </svg>
+            </a>
+            <a href="{% url 'event_management:settings' %}" class="dashboard-header-btn" data-tooltip="Settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </a>
+            <div class="dashboard-view-toggle" role="tablist" aria-label="Dashboard view">
+                <button type="button" class="dash-view-btn active" data-view-target="agenda" role="tab" aria-selected="true">Agenda</button>
+                <button type="button" class="dash-view-btn" data-view-target="tracker" role="tab" aria-selected="false">Review Tracker</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Content — two-column viewport-locked layout -->
+    <div class="dashboard-content">
+        <!-- Left Column: Stats, then Agenda + House Floor side by side -->
+        <div class="dashboard-col dashboard-col-left">
+
+            <!-- Stat Cards Row — above the inbox, original sizing -->
+            <div class="dashboard-stat-row">
+                <a href="{% url 'event_management:inbox' %}?filter=pending_approval" class="dashboard-stat-card">
+                    <div class="stat-card-icon stat-icon-approval">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                    </div>
+                    <div class="stat-card-body">
+                        <span class="stat-card-value">{{ approval_count }}</span>
+                        <span class="stat-card-label">Needs Approval</span>
+                    </div>
+                </a>
+                <a href="{% url 'event_management:inbox' %}?filter=needs_review" class="dashboard-stat-card">
+                    <div class="stat-card-icon stat-icon-review">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M9 2l1.3 3.7L14 7l-3.7 1.3L9 12 7.7 8.3 4 7l3.7-1.3L9 2z"></path>
+                            <path d="M17.5 11l.85 2.4 2.4.85-2.4.85-.85 2.4-.85-2.4-2.4-.85 2.4-.85.85-2.4z"></path>
+                        </svg>
+                    </div>
+                    <div class="stat-card-body">
+                        <span class="stat-card-value">{{ human_review_count }}</span>
+                        <span class="stat-card-label">New Extractions</span>
+                    </div>
+                </a>
+                <a href="{% url 'event_management:events' %}?filter=this_week" class="dashboard-stat-card">
+                    <div class="stat-card-icon stat-icon-week">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                    </div>
+                    <div class="stat-card-body">
+                        <span class="stat-card-value">{{ week_event_count }}</span>
+                        <span class="stat-card-label">Events This Week</span>
+                    </div>
+                </a>
+                <a href="{% url 'event_management:events' %}?filter=my_events" class="dashboard-stat-card">
+                    <div class="stat-card-icon stat-icon-assigned">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <div class="stat-card-body">
+                        <span class="stat-card-value">{{ my_assigned_count }}</span>
+                        <span class="stat-card-label">Assigned to You</span>
+                    </div>
+                </a>
+            </div>
+
+            <!-- View: Agenda (default) — Agenda + House Floor side by side -->
+            <div class="dashboard-view dashboard-view-agenda" data-view="agenda">
+            <!-- Inbox + House Floor, side by side -->
+            <div class="dashboard-left-row">
+
+            <!-- Office / My Agenda -->
+            <div class="dashboard-section dashboard-agenda-section">
+                <div class="section-header agenda-section-header">
+                    <h2 class="section-title">
+                        <svg class="section-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Agenda
+                    </h2>
+                    <div class="agenda-tabs" role="tablist">
+                        <button class="agenda-tab active" data-tab="office" role="tab">Office Agenda</button>
+                        <button class="agenda-tab" data-tab="my" role="tab">My Agenda</button>
+                    </div>
+                </div>
+                <div class="agenda-tab-panel active" data-panel="office">
+                    <div class="section-body agenda-event-list">
+                        {% if office_agenda %}
+                        {% for event in office_agenda %}
+                        {% ifchanged event.start_date %}{% if event.start_date != today_date %}<div class="agenda-day-divider" aria-hidden="true"><span class="agenda-day-divider-label">{% if event.start_date == tomorrow_date %}Tomorrow{% else %}{{ event.start_date|date:"D, M j" }}{% endif %}</span></div>{% endif %}{% endifchanged %}
+                        <div class="agenda-event-row" data-event-id="{{ event.id }}">
+                            <div class="agenda-event-time-col">
+                                <span class="agenda-event-time">{{ event.start_time|time:"g:i A"|default:"TBD" }}</span>
+                                {% if event.end_time %}<span class="agenda-event-endtime">to {{ event.end_time|time:"g:i A" }}</span>{% endif %}
+                            </div>
+                            <div class="agenda-event-info">
+                                <span class="agenda-event-title">{{ event.title|default:event.group|default:"Untitled" }}</span>
+                                <span class="agenda-event-meta">
+                                    <span class="agenda-event-status" style="color: {{ event.get_status_color }};">{{ event.get_status_display_from_office }}</span>{% if event.location %}<span class="agenda-event-meta-dot" aria-hidden="true">·</span><span class="agenda-event-location">{{ event.location }}</span>{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <a href="{% url 'event_management:events' %}" class="inbox-preview-load-more agenda-show-all">Show all events</a>
+                        {% else %}
+                        <div class="section-empty">No upcoming events</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="agenda-tab-panel" data-panel="my">
+                    <div class="section-body agenda-event-list">
+                        {% if my_agenda %}
+                        {% for event in my_agenda %}
+                        {% ifchanged event.start_date %}{% if event.start_date != today_date %}<div class="agenda-day-divider" aria-hidden="true"><span class="agenda-day-divider-label">{% if event.start_date == tomorrow_date %}Tomorrow{% else %}{{ event.start_date|date:"D, M j" }}{% endif %}</span></div>{% endif %}{% endifchanged %}
+                        <div class="agenda-event-row" data-event-id="{{ event.id }}">
+                            <div class="agenda-event-time-col">
+                                <span class="agenda-event-time">{{ event.start_time|time:"g:i A"|default:"TBD" }}</span>
+                                {% if event.end_time %}<span class="agenda-event-endtime">to {{ event.end_time|time:"g:i A" }}</span>{% endif %}
+                            </div>
+                            <div class="agenda-event-info">
+                                <span class="agenda-event-title">{{ event.title|default:event.group|default:"Untitled" }}</span>
+                                <span class="agenda-event-meta">
+                                    <span class="agenda-event-status" style="color: {{ event.get_status_color }};">{{ event.get_status_display_from_office }}</span>{% if event.location %}<span class="agenda-event-meta-dot" aria-hidden="true">·</span><span class="agenda-event-location">{{ event.location }}</span>{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <a href="{% url 'event_management:events' %}" class="inbox-preview-load-more agenda-show-all">Show all events</a>
+                        {% else %}
+                        <div class="section-empty">No upcoming events assigned to you</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- House Floor — tabbed: Live Updates / Schedule / Live Stream -->
+            <div class="dashboard-section dashboard-floor-section">
+                <div class="section-header floor-section-header">
+                    <h2 class="section-title">
+                        <svg class="section-title-icon gavel-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m14.5 12.5-8 8a2.119 2.119 0 1 1-3-3l8-8"/>
+                            <path d="m16 16 6-6"/>
+                            <path d="m8 8 6-6"/>
+                            <path d="m9 7 8 8"/>
+                            <path d="m21 11-8-8"/>
+                        </svg>
+                        House Floor
+                    </h2>
+                    <div class="floor-tabs" role="tablist">
+                        <button class="floor-tab active" data-floor-tab="live" role="tab">Live Updates</button>
+                        <button class="floor-tab" data-floor-tab="week" role="tab">Schedule</button>
+                        <button class="floor-tab" data-floor-tab="stream" role="tab">Live Stream</button>
+                    </div>
+                </div>
+
+                <!-- Live Updates — timestamped floor activity from clerk.house.gov -->
+                <div class="floor-tab-panel active" data-floor-panel="live">
+                    {% if floor_actions %}
+                    <div class="floor-panel-meta">
+                        {% if floor_proceedings %}
+                        <span class="floor-activity-day">{{ floor_proceedings.legislative_day|date:"l, M j" }}</span>
+                        {% if not floor_proceedings.day_finished %}<span class="floor-live-dot" title="In session" aria-label="In session"></span>{% endif %}
+                        {% if floor_proceedings.pub_date %}<span class="floor-updated">Updated {{ floor_proceedings.pub_date|date:"g:i A" }}</span>{% endif %}
+                        {% endif %}
+                        <a href="https://live.house.gov/" target="_blank" rel="noopener" class="floor-source-link" aria-label="Open live.house.gov" data-tooltip="live.house.gov">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                    </div>
+                    <div class="section-body floor-activity-body">
+                        {% for action in floor_actions %}
+                        <div class="floor-activity-row">
+                            <span class="floor-activity-time">{{ action.action_time_display }}</span>
+                            <span class="floor-activity-desc">{{ action.description }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="section-body floor-schedule-body">
+                        <div class="section-empty"><span>No live floor activity — House may be in recess</span></div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Schedule — Bills This Week from docs.house.gov -->
+                <div class="floor-tab-panel" data-floor-panel="week">
+                    {% if floor_schedule %}
+                    <div class="floor-panel-meta">
+                        <span class="floor-schedule-week">Week of {{ floor_schedule.week_date|date:"M j" }}</span>
+                        {% if floor_schedule.source_update_date %}
+                        <span class="floor-updated">Updated {{ floor_schedule.source_update_date|date:"M j, g:i A" }}</span>
+                        {% endif %}
+                        <a href="https://docs.house.gov/floor/" target="_blank" rel="noopener" class="floor-source-link" aria-label="Open docs.house.gov" data-tooltip="docs.house.gov">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                    </div>
+                    {% endif %}
+                    <div class="section-body floor-schedule-body">
+                        {% if floor_categories %}
+                        {% for category in floor_categories %}
+                        <div class="floor-category">
+                            <div class="floor-category-name">{{ category.name }}</div>
+                            <div class="floor-category-items">
+                                {% for item in category.items %}
+                                <div class="floor-item-row">
+                                    <span class="floor-item-num">{{ item.legis_num|default:"—" }}</span>
+                                    <span class="floor-item-text">
+                                        {% if item.pdf_url %}<a href="{{ item.pdf_url }}" target="_blank" rel="noopener">{{ item.floor_text|default:"(no description)" }}</a>{% else %}{{ item.floor_text|default:"(no description)" }}{% endif %}
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="section-empty">
+                            <span>No floor schedule available — House may be in recess</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Live Stream — Clerk's House floor video (YouTube), lazy-loaded -->
+                <div class="floor-tab-panel" data-floor-panel="stream">
+                    {% if floor_is_live %}
+                    <div class="floor-stream-wrap">
+                        <iframe class="floor-stream-frame"
+                                data-src="https://www.youtube.com/embed/live_stream?channel=UCqU8qiVHYmLsF0JIMByCTvw"
+                                title="U.S. House Floor live stream"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                allowfullscreen></iframe>
+                    </div>
+                    {% else %}
+                    <div class="floor-stream-offline">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m22 8-6 4 6 4V8z"></path>
+                            <rect x="2" y="6" width="14" height="12" rx="2" ry="2"></rect>
+                            <line x1="2" y1="2" x2="22" y2="22"></line>
+                        </svg>
+                        <div class="floor-stream-offline-title">The House floor isn't live right now</div>
+                        <div class="floor-stream-offline-sub">The video appears here when the House is in session.</div>
+                        <div class="floor-stream-offline-links">
+                            <a href="https://live.house.gov/" target="_blank" rel="noopener">Open live.house.gov</a>
+                            <a href="https://www.youtube.com/@USHouseClerk/live" target="_blank" rel="noopener">Clerk YouTube</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            </div><!-- /.dashboard-left-row -->
+            </div><!-- /.dashboard-view-agenda -->
+
+            <!-- View: Review Tracker — office-wide open approval-routing paths -->
+            <div class="dashboard-view dashboard-view-tracker" data-view="tracker" hidden>
+                <div class="dashboard-section review-tracker-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <svg class="section-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M9 11l3 3L22 4"></path>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                            </svg>
+                            Review Tracker
+                            {% if review_tracker_count %}<span class="inbox-preview-count">{{ review_tracker_count }}</span>{% endif %}
+                        </h2>
+                    </div>
+                    <div class="section-body review-tracker-body">
+                        {% if review_tracker %}
+                        {% for item in review_tracker %}
+                        <div class="review-tracker-card" data-event-id="{{ item.event.id }}">
+                            <div class="rt-card-head">
+                                <span class="rt-card-title">{{ item.event.title|default:item.event.group|default:"Untitled Event" }}</span>
+                                <span class="rt-card-meta">{% if item.event.start_date %}{{ item.event.start_date|date:"M j" }}{% endif %}{% if item.event.start_time %} · {{ item.event.start_time|time:"g:i A" }}{% endif %}{% if item.event.location %} · {{ item.event.location }}{% endif %}</span>
+                            </div>
+                            <div class="rt-stepper" style="grid-template-columns: repeat({{ item.flow|length }}, minmax(0, 25%));" aria-label="Approval progress">
+                                {% for node in item.flow %}<div class="rt-step rt-step-{{ node.state }}{% if node.is_current %} is-current{% endif %}{% if not forloop.first %} has-line{% endif %}" role="listitem" data-note="{{ node.name }}{% if node.note %} — {{ node.note }}{% endif %}"><span class="rt-step-marker" aria-hidden="true">{% if node.state == 'approved' or node.state == 'created_route' %}<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#28a745"></circle><path d="M5.5 10.5l2.8 2.8 6.2-6.6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>{% elif node.state == 'sent_back' %}<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#dc3545"></circle><path d="M6.8 6.8l6.4 6.4M13.2 6.8l-6.4 6.4" stroke="#fff" stroke-width="2" stroke-linecap="round"></path></svg>{% elif node.is_current %}<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="#fff" stroke="#856404" stroke-width="2"></circle><circle cx="10" cy="10" r="4" fill="#856404"></circle></svg>{% else %}<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="#fff" stroke="#adb5bd" stroke-width="2"></circle></svg>{% endif %}</span><span class="rt-step-name{% if node.is_current %} is-current{% endif %}">{{ node.name }}</span></div>{% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="section-empty"><span>No open review paths across the office.</span></div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div><!-- /.dashboard-view-tracker -->
+        </div>
+
+        <!-- Right Column: Inbox (full height) -->
+        <div class="dashboard-col dashboard-col-right">
+            <div class="dashboard-section dashboard-inbox-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg class="section-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                            <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                        </svg>
+                        Inbox
+                        {% if inbox_count %}<span class="inbox-preview-count">{{ inbox_count }}</span>{% endif %}
+                    </h2>
+                    <a href="{% url 'event_management:inbox' %}" class="section-link">View All</a>
+                </div>
+                <div class="section-body inbox-preview-body">
+                    {% for d in decision_preview %}
+                    <div class="inbox-preview-card decision" data-href="{% url 'event_management:inbox' %}">
+                        <div class="inbox-preview-card-left">
+                            <div class="inbox-preview-card-title">
+                                <span class="inbox-preview-prefix">NEEDS A DECISION:</span> {{ d.subject }}
+                            </div>
+                            <div class="inbox-preview-card-meta">
+                                {{ d.reason_label }}{% if d.received %} · <span class="inbox-preview-received">Received {{ d.received|date:"M d" }}</span>{% endif %}
+                            </div>
+                        </div>
+                        <div class="inbox-preview-card-right">
+                            <span class="inbox-preview-badge decision" aria-label="Set aside for a decision" data-tooltip="Set aside for a decision">Set aside</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if inbox_preview %}
+                    {% for item in inbox_preview %}
+                    <div class="inbox-preview-card{% if item.requires_human_review %} human-review{% elif item.id in pending_approval_event_ids %} pending-approval{% endif %}{% if forloop.counter0 >= 20 %} inbox-preview-card-hidden{% endif %}" data-event-id="{{ item.id }}">
+                        <div class="inbox-preview-card-left">
+                            <div class="inbox-preview-card-title">
+                                {% if item.requires_human_review %}<span class="inbox-preview-prefix">NEW EVENT:</span> {% endif %}{{ item.title|default:item.group|default:"Untitled Event" }}{% if item.group %} · <em>{{ item.group }}</em>{% endif %}
+                            </div>
+                            <div class="inbox-preview-card-meta">
+                                {% if item.start_date %}{{ item.start_date|date:"M d" }}{% else %}No date set{% endif %}{% if item.start_time %} · {{ item.start_time|time:"g:i A" }}{% endif %}{% if item.created %} · <span class="inbox-preview-received">Received {{ item.created|date:"M d" }}</span>{% endif %}
+                            </div>
+                        </div>
+                        <div class="inbox-preview-card-right">
+                            {% if item.id in pending_approval_event_ids %}
+                            <span class="inbox-preview-badge approval" aria-label="Routed to you for review" data-tooltip="Routed to you for review">{% if item.routing_sender_name %}{{ item.routing_sender_name }} → {% endif %}<svg class="inbox-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
+                            {% elif item.requires_human_review %}
+                            <span class="inbox-preview-badge extraction" aria-label="Human review required" data-tooltip="Human review required">Extracted<svg class="inbox-badge-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 2l1.3 3.7L14 7l-3.7 1.3L9 12 7.7 8.3 4 7l3.7-1.3L9 2z"></path><path d="M17.5 11l.85 2.4 2.4.85-2.4.85-.85 2.4-.85-2.4-2.4-.85 2.4-.85.85-2.4z"></path></svg></span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if inbox_preview|length > 20 %}
+                    <button type="button" class="inbox-preview-load-more" id="inbox-preview-load-more">Load More</button>
+                    {% endif %}
+                    {% elif not decision_preview %}
+                    <div class="section-empty">
+                        <span>No items need review.</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // When the event editing modal saves/closes from the dashboard, the page's
+    // server-rendered counts and lists won't reflect the change. Tell the
+    // modal how to refresh the dashboard — full reload is the simplest way to
+    // re-pull every stat card, agenda row, and inbox preview at once.
+    window.dashboardRefresh = function () {
+        window.location.reload();
+    };
+
+    // Dashboard: clicking agenda rows or inbox preview cards opens event in modal
+    document.addEventListener('DOMContentLoaded', function () {
+        // "Needs a decision" rows aren't events yet: they open the inbox.
+        document.querySelectorAll('.inbox-preview-card[data-href]').forEach(function (row) {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', function () { window.location.href = this.getAttribute('data-href'); });
+        });
+
+        var clickableRows = document.querySelectorAll('.inbox-preview-card[data-event-id], .agenda-event-row[data-event-id], .review-tracker-card[data-event-id]');
+        clickableRows.forEach(function (row) {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', function () {
+                var eventId = this.getAttribute('data-event-id');
+                if (eventId && typeof openEventEditingModal === 'function') {
+                    openEventEditingModal(eventId);
+                }
+            });
+        });
+
+        // Hover tooltip on agenda rows — same look + behavior as the calendar's
+        // .calendar-tooltip (defined in dashboard-redesign.css as .agenda-tooltip).
+        var agendaTooltip = document.createElement('div');
+        agendaTooltip.className = 'agenda-tooltip';
+        document.body.appendChild(agendaTooltip);
+
+        function positionAgendaTooltip(mouseX, mouseY) {
+            var rect = agendaTooltip.getBoundingClientRect();
+            var offset = 12;
+            var left = mouseX + offset;
+            var top = mouseY + offset;
+            if (left + rect.width > window.innerWidth - 10) {
+                left = mouseX - rect.width - offset;
+            }
+            if (top + rect.height > window.innerHeight - 10) {
+                top = mouseY - rect.height - offset;
+            }
+            agendaTooltip.style.left = Math.max(10, left) + 'px';
+            agendaTooltip.style.top = Math.max(10, top) + 'px';
+        }
+
+        document.querySelectorAll('.agenda-event-row[data-event-id]').forEach(function (row) {
+            row.addEventListener('mouseenter', function (e) {
+                var titleEl = row.querySelector('.agenda-event-title');
+                var text = titleEl ? titleEl.textContent.trim() : '';
+                if (!text) return;
+                agendaTooltip.textContent = text;
+                agendaTooltip.classList.add('visible');
+                positionAgendaTooltip(e.clientX, e.clientY);
+            });
+            row.addEventListener('mousemove', function (e) {
+                if (agendaTooltip.classList.contains('visible')) {
+                    positionAgendaTooltip(e.clientX, e.clientY);
+                }
+            });
+            row.addEventListener('mouseleave', function () {
+                agendaTooltip.classList.remove('visible');
+            });
+        });
+
+        // Inbox badge tooltips (Human review required / Routed to you for
+        // review) — reuse the body-level tooltip so it isn't clipped by the
+        // card's overflow.
+        document.querySelectorAll('.inbox-preview-badge[data-tooltip]').forEach(function (badge) {
+            badge.addEventListener('mouseenter', function (e) {
+                var text = badge.getAttribute('data-tooltip');
+                if (!text) return;
+                agendaTooltip.textContent = text;
+                agendaTooltip.classList.add('visible');
+                positionAgendaTooltip(e.clientX, e.clientY);
+            });
+            badge.addEventListener('mousemove', function (e) {
+                if (agendaTooltip.classList.contains('visible')) {
+                    positionAgendaTooltip(e.clientX, e.clientY);
+                }
+            });
+            badge.addEventListener('mouseleave', function () {
+                agendaTooltip.classList.remove('visible');
+            });
+        });
+
+        // Review Tracker flow boxes: show the full reviewer note on hover
+        // (the box itself only shows a one-line truncated version).
+        document.querySelectorAll('.rt-step[data-note]').forEach(function (node) {
+            node.addEventListener('mouseenter', function (e) {
+                var text = node.getAttribute('data-note');
+                if (!text) return;
+                agendaTooltip.textContent = text;
+                agendaTooltip.classList.add('visible');
+                positionAgendaTooltip(e.clientX, e.clientY);
+            });
+            node.addEventListener('mousemove', function (e) {
+                if (agendaTooltip.classList.contains('visible')) {
+                    positionAgendaTooltip(e.clientX, e.clientY);
+                }
+            });
+            node.addEventListener('mouseleave', function () {
+                agendaTooltip.classList.remove('visible');
+            });
+        });
+
+        // Inbox preview Load More: reveal the next batch of hidden cards.
+        var loadMoreBtn = document.getElementById('inbox-preview-load-more');
+        if (loadMoreBtn) {
+            var STEP = 10;
+            loadMoreBtn.addEventListener('click', function () {
+                var hiddenCards = document.querySelectorAll('.inbox-preview-card.inbox-preview-card-hidden');
+                for (var i = 0; i < STEP && i < hiddenCards.length; i++) {
+                    hiddenCards[i].classList.remove('inbox-preview-card-hidden');
+                }
+                if (document.querySelectorAll('.inbox-preview-card.inbox-preview-card-hidden').length === 0) {
+                    loadMoreBtn.style.display = 'none';
+                }
+            });
+        }
+
+        // Agenda tab switching
+        document.querySelectorAll('.agenda-tab').forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                var target = this.getAttribute('data-tab');
+                document.querySelectorAll('.agenda-tab').forEach(function (t) { t.classList.remove('active'); });
+                document.querySelectorAll('.agenda-tab-panel').forEach(function (p) { p.classList.remove('active'); });
+                this.classList.add('active');
+                var panel = document.querySelector('.agenda-tab-panel[data-panel="' + target + '"]');
+                if (panel) panel.classList.add('active');
+            });
+        });
+
+        // House Floor tab switching (Live Updates / This Week's Schedule)
+        document.querySelectorAll('.floor-tab').forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                var target = this.getAttribute('data-floor-tab');
+                document.querySelectorAll('.floor-tab').forEach(function (t) { t.classList.remove('active'); });
+                document.querySelectorAll('.floor-tab-panel').forEach(function (p) { p.classList.remove('active'); });
+                this.classList.add('active');
+                var panel = document.querySelector('.floor-tab-panel[data-floor-panel="' + target + '"]');
+                if (panel) {
+                    panel.classList.add('active');
+                    // Lazy-load any embed (the live stream) only when its tab is
+                    // first opened, so we don't hit YouTube on every dashboard load.
+                    var frame = panel.querySelector('iframe[data-src]');
+                    if (frame && !frame.src) {
+                        frame.src = frame.getAttribute('data-src');
+                    }
+                }
+            });
+        });
+
+        // Header view toggle: Agenda <-> Review Tracker. Acts as a single switch —
+        // pressing EITHER side swaps to the other view. Shift+Left/Right also swap;
+        // Up/Down scroll whichever view is currently showing. Client-side only.
+        function dashCurrentView() {
+            var active = document.querySelector('.dash-view-btn.active');
+            return active ? active.getAttribute('data-view-target') : 'agenda';
+        }
+        function dashSetView(target) {
+            document.querySelectorAll('.dash-view-btn').forEach(function (b) {
+                var on = b.getAttribute('data-view-target') === target;
+                b.classList.toggle('active', on);
+                b.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            document.querySelectorAll('.dashboard-view').forEach(function (v) {
+                v.hidden = (v.getAttribute('data-view') !== target);
+            });
+        }
+        function dashSwapView() {
+            dashClearSelection();
+            dashSetFloorSelected(false);
+            dashSetView(dashCurrentView() === 'agenda' ? 'tracker' : 'agenda');
+            dashPane = dashPanes()[0];
+        }
+        // Either button just swaps to the other view.
+        document.querySelectorAll('.dash-view-btn').forEach(function (btn) {
+            btn.addEventListener('click', dashSwapView);
+        });
+
+        // Up/Down navigate within the active "pane"; Left/Right move between panes.
+        // Agenda view panes: Agenda -> House Floor -> Inbox. (Tracker view: Review
+        // Tracker -> Inbox.) Card panes select rows; the House Floor pane selects
+        // the whole box and Up/Down scroll its content.
+        var dashPane = 'agenda';
+        function dashPanes() {
+            return dashCurrentView() === 'tracker'
+                ? ['tracker', 'inbox'] : ['agenda', 'floor', 'inbox'];
+        }
+        function dashCards() {
+            var sel;
+            if (dashPane === 'inbox') sel = '.inbox-preview-card[data-event-id]:not(.inbox-preview-card-hidden)';
+            else if (dashPane === 'tracker') sel = '.dashboard-view-tracker .review-tracker-card[data-event-id]';
+            else if (dashPane === 'agenda') sel = '.dashboard-view-agenda .agenda-tab-panel.active .agenda-event-row[data-event-id]';
+            else return [];   // 'floor' pane has no selectable cards
+            return Array.prototype.slice.call(document.querySelectorAll(sel));
+        }
+        var dashSelectedEl = null;
+        function dashClearSelection() {
+            if (dashSelectedEl) dashSelectedEl.classList.remove('dash-kbd-selected');
+            dashSelectedEl = null;
+        }
+        function dashMoveSelection(delta) {
+            var cards = dashCards();
+            if (!cards.length) return;
+            var idx = dashSelectedEl ? cards.indexOf(dashSelectedEl) : -1;
+            if (idx === -1) idx = delta > 0 ? 0 : cards.length - 1;
+            else idx = Math.max(0, Math.min(cards.length - 1, idx + delta));
+            if (dashSelectedEl) dashSelectedEl.classList.remove('dash-kbd-selected');
+            dashSelectedEl = cards[idx];
+            dashSelectedEl.classList.add('dash-kbd-selected');
+            dashSelectedEl.scrollIntoView({ block: 'nearest' });
+        }
+        // House Floor pane: select the whole box; Up/Down scroll its content.
+        function dashFloorBox() { return document.querySelector('.dashboard-floor-section'); }
+        function dashFloorScroll() {
+            return document.querySelector('.dashboard-floor-section .floor-tab-panel.active .section-body');
+        }
+        function dashSetFloorSelected(on) {
+            var box = dashFloorBox();
+            if (box) box.classList.toggle('dash-kbd-box-selected', on);
+        }
+        function dashEnterPane(pane) {
+            dashClearSelection();
+            dashSetFloorSelected(false);
+            dashPane = pane;
+            if (pane === 'floor') {
+                dashSetFloorSelected(true);
+                var box = dashFloorBox();
+                if (box) box.scrollIntoView({ block: 'nearest' });
+            } else {
+                dashMoveSelection(1);   // land on the first card of the new pane
+            }
+        }
+        // Don't steal the keys while the event modal (or any dialog) is open.
+        function dashOverlayOpen() {
+            var dialogs = document.querySelectorAll('.v2-modal-overlay.active, [role="dialog"]');
+            for (var i = 0; i < dialogs.length; i++) {
+                if (dialogs[i].offsetParent !== null) return true;
+            }
+            return false;
+        }
+        // Explicit Tab order for the dashboard, looping:
+        //   agenda tabs -> house-floor tabs -> the 4 stat cards -> Inbox "View All"
+        //   -> back to the start. (The header icon buttons and the header view
+        //   toggle are intentionally excluded from the cycle.)
+        function dashTabOrder() {
+            var groups = [
+                '.agenda-tab',
+                '.floor-tab',
+                '.dashboard-stat-card',
+                '.dashboard-inbox-section .section-header .section-link'
+            ];
+            var els = [];
+            groups.forEach(function (sel) {
+                document.querySelectorAll(sel).forEach(function (el) {
+                    if (el.offsetParent !== null) els.push(el);   // visible only
+                });
+            });
+            return els;
+        }
+        document.addEventListener('keydown', function (e) {
+            var t = e.target;
+            if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+            if (dashOverlayOpen()) return;
+            // Tab / Shift+Tab cycle through the explicit dashboard order (looping).
+            if (e.key === 'Tab') {
+                var order = dashTabOrder();
+                if (!order.length) return;
+                e.preventDefault();
+                var oi = order.indexOf(document.activeElement);
+                var on = order.length;
+                var target = (oi === -1)
+                    ? (e.shiftKey ? order[on - 1] : order[0])
+                    : order[e.shiftKey ? (oi - 1 + on) % on : (oi + 1) % on];
+                target.focus();
+                return;
+            }
+            // Shift + Left/Right swaps the two views (either direction swaps).
+            if (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                dashSwapView();
+                return;
+            }
+            // Left/Right (no shift) move between panes: Agenda -> House Floor ->
+            // Inbox (and back). The House Floor box is included, not skipped.
+            if (!e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey &&
+                (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                var panes = dashPanes();
+                var ci = panes.indexOf(dashPane);
+                if (ci === -1) ci = 0;
+                var ni = e.key === 'ArrowRight'
+                    ? Math.min(panes.length - 1, ci + 1)
+                    : Math.max(0, ci - 1);
+                if (ni !== ci) dashEnterPane(panes[ni]);
+                return;
+            }
+            // Up/Down: in the House Floor pane scroll its content; otherwise move
+            // the card selection (scrolling the selected card into view).
+            if (!e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey &&
+                (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                e.preventDefault();
+                if (dashPane === 'floor') {
+                    var sc = dashFloorScroll();
+                    if (sc) sc.scrollTop += (e.key === 'ArrowDown' ? 1 : -1) * 64;
+                } else {
+                    dashMoveSelection(e.key === 'ArrowDown' ? 1 : -1);
+                }
+                return;
+            }
+            if (e.key === 'Enter' && dashSelectedEl && dashCards().indexOf(dashSelectedEl) !== -1) {
+                if (t && t.closest && t.closest('button, a, [role="button"]')) return; // let native activate
+                e.preventDefault();
+                dashSelectedEl.click();
+            }
+        });
+    });
+</script>
+{% endblock %}

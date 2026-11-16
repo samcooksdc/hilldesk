@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HillDesk — Plain-Language Overview</title>
+<style>
+  :root {
+    --navy: #1b2a4a;
+    --navy-light: #2a3f6b;
+    --gold: #c9a227;
+    --ink: #1f2433;
+    --muted: #5b6478;
+    --line: #e3e7ef;
+    --bg-soft: #f6f8fc;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    line-height: 1.55;
+    font-size: 11pt;
+    margin: 0;
+  }
+  h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; color: var(--navy); }
+  p { margin: 0 0 10px; }
+
+  /* Cover */
+  .cover {
+    height: 100vh;
+    background: linear-gradient(155deg, var(--navy) 0%, var(--navy-light) 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 70px;
+    page-break-after: always;
+  }
+  .cover .brand { font-family: Georgia, serif; font-size: 52pt; font-weight: 700; letter-spacing: -1px; }
+  .cover .brand span { color: var(--gold); }
+  .cover .rule { width: 90px; height: 4px; background: var(--gold); margin: 22px 0 26px; }
+  .cover .sub { font-size: 17pt; font-weight: 300; max-width: 560px; color: #dfe5f1; }
+  .cover .meta { margin-top: 48px; font-size: 10.5pt; color: #aeb8d0; }
+
+  /* Layout */
+  .page { padding: 46px 60px; }
+  section { page-break-inside: auto; }
+  h2.section {
+    font-size: 21pt;
+    border-bottom: 3px solid var(--gold);
+    padding-bottom: 7px;
+    margin: 8px 0 18px;
+  }
+  h2.section .num {
+    display: inline-block;
+    background: var(--navy);
+    color: #fff;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 12pt;
+    border-radius: 6px;
+    padding: 1px 11px;
+    margin-right: 12px;
+    vertical-align: middle;
+  }
+  h3 { font-size: 13.5pt; margin: 20px 0 6px; }
+  .lead { font-size: 12pt; color: var(--muted); margin-bottom: 18px; }
+
+  .card {
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--gold);
+    background: var(--bg-soft);
+    border-radius: 7px;
+    padding: 13px 17px;
+    margin: 12px 0;
+    page-break-inside: avoid;
+  }
+  .card h4 { margin: 0 0 4px; font-family: "Segoe UI", sans-serif; font-size: 11.5pt; color: var(--navy); }
+  .card .plain { color: var(--ink); }
+  .card .tech { color: var(--muted); font-size: 9.5pt; margin-top: 5px; font-style: italic; }
+
+  .analogy {
+    background: #fbf7e9;
+    border: 1px solid #ece0b8;
+    border-radius: 7px;
+    padding: 12px 16px;
+    margin: 16px 0;
+    page-break-inside: avoid;
+  }
+  .analogy strong { color: #8a6d12; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10pt; page-break-inside: auto; }
+  th { background: var(--navy); color: #fff; text-align: left; padding: 8px 10px; font-family: "Segoe UI", sans-serif; }
+  td { border-bottom: 1px solid var(--line); padding: 7px 10px; vertical-align: top; }
+  tr:nth-child(even) td { background: var(--bg-soft); }
+  tr { page-break-inside: avoid; }
+
+  .flow { margin: 16px 0; }
+  .flow .step { display: flex; align-items: flex-start; margin-bottom: 10px; page-break-inside: avoid; }
+  .flow .n {
+    flex: 0 0 28px; height: 28px; border-radius: 50%;
+    background: var(--gold); color: var(--navy); font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 13px; font-family: "Segoe UI", sans-serif; font-size: 11pt;
+  }
+  .flow .body { flex: 1; }
+  .flow .body b { color: var(--navy); }
+
+  .toc-list { list-style: none; padding: 0; font-size: 12pt; }
+  .toc-list li { padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .toc-list .tnum { color: var(--gold); font-weight: 700; font-family: "Segoe UI", sans-serif; margin-right: 12px; }
+
+  .note { font-size: 9.5pt; color: var(--muted); border-top: 1px solid var(--line); margin-top: 26px; padding-top: 10px; }
+  .pagebreak { page-break-before: always; }
+  .tag { display:inline-block; background:var(--navy); color:#fff; font-size:8.5pt; padding:1px 8px; border-radius:10px; margin-left:6px; font-family:"Segoe UI",sans-serif; vertical-align:middle;}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="brand">Hill<span>Desk</span></div>
+  <div class="rule"></div>
+  <div class="sub">A plain-language guide to how the app is built, what it does, and the technology behind it.</div>
+  <div class="meta">
+    Congressional Scheduling &amp; Workflow Application &nbsp;•&nbsp; U.S. House Offices<br>
+    Prepared June 2026
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="page">
+  <h2 class="section">Contents</h2>
+  <ul class="toc-list">
+    <li><span class="tnum">1</span>What HillDesk Is (In One Minute)</li>
+    <li><span class="tnum">2</span>How It Works — The Journey of an Email</li>
+    <li><span class="tnum">3</span>The Building Blocks (Architecture)</li>
+    <li><span class="tnum">4</span>What It Can Do (Features)</li>
+    <li><span class="tnum">5</span>Keeping Data Safe (Security &amp; Compliance)</li>
+    <li><span class="tnum">6</span>The Technology Pieces (Dependencies)</li>
+    <li><span class="tnum">7</span>Where the App Runs (Environments)</li>
+  </ul>
+</div>
+
+<!-- 1 -->
+<div class="page pagebreak">
+<section>
+  <h2 class="section"><span class="num">1</span>What HillDesk Is</h2>
+  <p class="lead">A scheduling assistant for congressional offices that turns a flood of incoming email into organized, reviewable events.</p>
+
+  <p>Every day, a U.S. House office receives dozens of emails asking the Member of Congress to attend meetings, speak at events, or make appearances. Sorting through them by hand — figuring out which are actual scheduling requests, pulling out the date, time, location, and who's asking — is slow and easy to get wrong.</p>
+
+  <p><strong>HillDesk does the first pass automatically.</strong> It reads incoming email, uses artificial intelligence to recognize scheduling requests and pull out the key details, and then hands everything to a staff member to review before anything becomes official. The AI never makes the final call — a person always does.</p>
+
+  <div class="analogy">
+    <strong>Think of it like:</strong> a very fast assistant who opens all the mail, highlights the important parts of each scheduling request, fills in a draft calendar entry, and leaves it on your desk with a note that says "please check this before I put it on the calendar." You stay in control; the assistant just removes the busywork.
+  </div>
+
+  <h3>Who uses it</h3>
+  <p>Staff in a congressional office, working in three roles: <strong>Admins</strong> (run the office setup and manage people), <strong>Schedulers</strong> (own the calendar and approve changes), and <strong>Staff</strong> (handle events in their subject areas and suggest changes).</p>
+</section>
+</div>
+
+<!-- 2 -->
+<div class="page pagebreak">
+<section>
+  <h2 class="section"><span class="num">2</span>How It Works</h2>
+  <p class="lead">The journey of a single scheduling email, from inbox to approved calendar entry.</p>
+
+  <div class="flow">
+    <div class="step"><div class="n">1</div><div class="body"><b>The email arrives.</b> HillDesk connects to the office's Microsoft Outlook mailbox and pulls in new messages automatically — no copying and pasting.</div></div>
+    <div class="step"><div class="n">2</div><div class="body"><b>The AI reads it.</b> Artificial intelligence decides "Is this actually a scheduling request?" and gives a confidence score, so low-certainty guesses are flagged rather than trusted blindly.</div></div>
+    <div class="step"><div class="n">3</div><div class="body"><b>The AI extracts the details.</b> If it is a request, the AI pulls out the title, date, time, location, who's asking, and the topics involved — and remembers exactly which sentence each detail came from.</div></div>
+    <div class="step"><div class="n">4</div><div class="body"><b>A draft event is created.</b> The extracted details become a draft event marked "needs human review," waiting in the inbox.</div></div>
+    <div class="step"><div class="n">5</div><div class="body"><b>A person reviews it.</b> A staff member accepts or rejects each field the AI filled in. They can see the original email side-by-side. Every accept/reject is logged.</div></div>
+    <div class="step"><div class="n">6</div><div class="body"><b>It goes through approval (if needed).</b> The event can be routed to one or more people who must sign off — in parallel ("everyone approves") or in sequence ("first this person, then that one").</div></div>
+    <div class="step"><div class="n">7</div><div class="body"><b>It lands on the calendar.</b> Once approved, the event appears in the schedule and calendar views. A reply email can be sent back using a saved template.</div></div>
+  </div>
+
+  <div class="analogy">
+    <strong>The golden rule:</strong> the AI is <em>assistive only</em>. It drafts and suggests; it never decides. A human reviews and approves before anything is final. This "human-in-the-loop" design is deliberate and required for the office's compliance rules.
+  </div>
+</section>
+</div>
+
+<!-- 3 -->
+<div class="page pagebreak">
+<section>
+  <h2 class="section"><span class="num">3</span>The Building Blocks</h2>
+  <p class="lead">HillDesk is built from a handful of separate parts, each with one job. Here's each one in plain terms.</p>
+
+  <div class="card">
+    <h4>The Web Application <span class="tag">Django</span></h4>
+    <p class="plain">The core program that runs everything — the pages staff see, the rules about who can do what, and the logic that ties it all together. It's the "engine" of HillDesk.</p>
+    <p class="tech">Built on Django, a mature Python web framework used by organizations worldwide.</p>
+  </div>
+
+  <div class="card">
+    <h4>The Four Departments (Apps)</h4>
+    <p class="plain">Internally the engine is split into four focused areas, like departments in an office:</p>
+    <p class="plain">&nbsp;&nbsp;• <b>Authentication</b> — handles logins, user accounts, roles, and office setup.<br>
+    &nbsp;&nbsp;• <b>Email Processing</b> — pulls in email and runs the AI.<br>
+    &nbsp;&nbsp;• <b>Event Management</b> — the calendar, events, approvals, and exports (the main screens).<br>
+    &nbsp;&nbsp;• <b>API</b> — the messenger that lets the screens talk to the engine behind the scenes.</p>
+  </div>
+
+  <div class="card">
+    <h4>The Filing Cabinet (Database)</h4>
+    <p class="plain">Where all the information lives permanently — every event, email, user, and approval. It's organized and indexed so the app can find things instantly.</p>
+    <p class="tech">PostgreSQL in production (a robust, enterprise database); SQLite for local development.</p>
+  </div>
+
+  <div class="card">
+    <h4>The Back-Office Worker (Task Queue)</h4>
+    <p class="plain">Some jobs take time — fetching a batch of email, running the AI, building a Word document. Rather than make staff wait, these are handed to a background worker that does them quietly and reports back when done.</p>
+    <p class="tech">Celery handles the background jobs; Redis is the fast "to-do list" they pull work from.</p>
+  </div>
+
+  <div class="card">
+    <h4>The AI Brain (Language Model)</h4>
+    <p class="plain">The part that actually reads and understands email. HillDesk is designed so the AI can be swapped out depending on the setting — a secure government-cloud AI in production, or a fake stand-in for offline testing — without changing the rest of the app.</p>
+    <p class="tech">Amazon Bedrock (Claude models) in production; a "mock" provider for development. Outside AI services are blocked in production by compliance rules.</p>
+  </div>
+
+  <div class="card">
+    <h4>The Front Door (Authentication &amp; Login)</h4>
+    <p class="plain">Controls who gets in. In the real office, staff sign in with their existing Microsoft work account (single sign-on), so there's no separate password to remember. Optional two-step verification adds another layer.</p>
+    <p class="tech">Azure Active Directory single sign-on in production; standard username/password locally.</p>
+  </div>
+
+  <div class="card">
+    <h4>The Mail Connection (Microsoft Graph)</h4>
+    <p class="plain">The secure link to the office's Outlook mailbox that lets HillDesk read incoming email and send replies.</p>
+    <p class="tech">Microsoft Graph API, the official way to connect to Microsoft 365.</p>
+  </div>
+</section>
+</div>
+
+<!-- 4 -->
+<div class="page pagebreak">
+<section>
+  <h2 class="section"><span class="num">4</span>What It Can Do</h2>
+  <p class="lead">The features staff actually use, day to day.</p>
+
+  <div class="card">
+    <h4>Automatic Email Intake &amp; AI Extraction</h4>
+    <p class="plain">Pulls in Outlook email, spots scheduling requests, and drafts event details automatically — with a confidence score so uncertain guesses get flagged.</p>
+  </div>
+  <div class="card">
+    <h4>Human Review of AI Suggestions</h4>
+    <p class="plain">Every AI-filled field can be accepted or rejected individually, with the original email shown alongside. "SmartExtract" can re-run the AI on demand to suggest fields for an existing event. Every decision is recorded.</p>
+  </div>
+  <div class="card">
+    <h4>Event &amp; Calendar Management</h4>
+    <p class="plain">Create, edit, search, and organize events with full details — date, time, location, topics, attendees, point of contact, assigned staff, and tags. View them as a list or on a calendar (day/week/month).</p>
+  </div>
+  <div class="card">
+    <h4>Approval Routing</h4>
+    <p class="plain">Send an event to one or more people for sign-off. Approvals can run in parallel (everyone must approve) or in sequence (one after another). Approvers can approve, or "send back" with a comment requesting changes.</p>
+  </div>
+  <div class="card">
+    <h4>Staff Change Suggestions</h4>
+    <p class="plain">When a staff member who isn't assigned to an event wants to change it, their edit becomes a <em>suggestion</em> instead of an immediate change. A scheduler or admin reviews and approves or rejects it — protecting the official record.</p>
+  </div>
+  <div class="card">
+    <h4>Roles &amp; Permissions</h4>
+    <p class="plain">Three roles — Admin, Scheduler, Staff — control who can change statuses, manage people, configure approvals, and edit directly versus suggest.</p>
+  </div>
+  <div class="card">
+    <h4>Multiple Offices, Customized</h4>
+    <p class="plain">Each office can define its own event statuses, types, formats, colors, and tags, plus Member and district details — so HillDesk matches how that specific office works.</p>
+  </div>
+  <div class="card">
+    <h4>Email Replies &amp; Templates</h4>
+    <p class="plain">Reply to requesters using saved, reusable templates (RSVPs, follow-ups, declines, thank-yous). The AI can even draft a reply for staff to review and send.</p>
+  </div>
+  <div class="card">
+    <h4>Exports</h4>
+    <p class="plain">Produce polished Word documents (daily briefings, weekly overviews, event details) and spreadsheet (CSV) exports from office-customizable templates.</p>
+  </div>
+  <div class="card">
+    <h4>House Floor Schedule</h4>
+    <p class="plain">Automatically pulls in the weekly "Bills This Week" floor schedule from the official House source, so staff can see legislative business alongside the calendar.</p>
+  </div>
+  <div class="card">
+    <h4>Archiving &amp; Retention</h4>
+    <p class="plain">Old events can be archived (hidden but kept) and managed under retention rules, keeping the working calendar clean without losing history.</p>
+  </div>
+  <div class="card">
+    <h4>Personal Settings</h4>
+    <p class="plain">Each user controls their theme, default view, notifications, saved search filters, profile, and password.</p>
+  </div>
+</section>
+</div>
+
+<!-- 5 -->
+<div class="page pagebreak">
+<section>
+  <h2 class="section"><span class="num">5</span>Keeping Data Safe</h2>
+  <p class="lead">HillDesk handles sensitive congressional correspondence, so security is built into every layer.</p>
+
+  <div class="card">
+    <h4>Sensitive Information Is Scrambled</h4>
+    <p class="plain">Personal details are encrypted in the database, so even someone with raw access to the files can't read them. Each record is also labeled by sensitivity (public, internal, confidential, restricted).</p>
+  </div>
+  <div class="card">
+    <h4>Everything Is Logged</h4>
+    <p class="plain">Every change to an event, every AI accept/reject, every approval, and every login is recorded with who did it, when, and from where — a complete audit trail for accountability.</p>
+  </div>
+  <div class="card">
+    <h4>Strong Login Protection</h4>
+    <p class="plain">Single sign-on with the office's Microsoft accounts, optional two-step verification, and automatic lockout after repeated failed login attempts.</p>
+  </div>
+  <div class="card">
+    <h4>Walled-Off Network</h4>
+    <p class="plain">In production the app runs inside a private government cloud with no open door to the public internet. It talks only to approved services over a dedicated private connection.</p>
+    <p class="tech">AWS GovCloud, private network, Direct Connect — no public internet egress.</p>
+  </div>
+  <div class="card">
+    <h4>Approved AI Only</h4>
+    <p class="plain">In production, only the government-approved AI service is allowed. The app actively refuses to start if someone tries to configure an outside AI provider.</p>
+  </div>
+  <div class="card">
+    <h4>Standard Web Protections</h4>
+    <p class="plain">Encrypted connections, protections against common web attacks, and limits on how often requests can be made — the expected safeguards for a professional application.</p>
+    <p class="tech">HTTPS/HSTS, CSRF protection, Content Security Policy, rate limiting, secure cookies.</p>
+  </div>
+</section>
+</div>
+
+<!-- 6 -->
+<div class="page pagebreak">
+<section>
+  <h2 class="section"><span class="num">6</span>The Technology Pieces</h2>
+  <p class="lead">HillDesk is assembled from trusted, off-the-shelf software components ("dependencies"), each handling one specialized job so the team doesn't have to build everything from scratch. Below, each is explained in plain terms.</p>
+
+  <h3>Core Framework</h3>
+  <table>
+    <tr><th>Component</th><th>What it does, in plain terms</th></tr>
+    <tr><td>Django</td><td>The main framework the whole app is built on — the foundation and structure.</td></tr>
+    <tr><td>Django REST Framework</td><td>Lets the screens and the engine exchange data smoothly behind the scenes.</td></tr>
+    <tr><td>django-cors-headers</td><td>Safely controls which other websites are allowed to talk to the app.</td></tr>
+    <tr><td>django-oauth-toolkit</td><td>Handles secure permission-granting between systems.</td></tr>
+    <tr><td>django-extensions</td><td>A toolbox of helpers that make development and maintenance easier.</td></tr>
+  </table>
+
+  <h3>Information Storage</h3>
+  <table>
+    <tr><th>Component</th><th>What it does, in plain terms</th></tr>
+    <tr><td>psycopg2-binary</td><td>The connector that lets the app read and write to the PostgreSQL database.</td></tr>
+  </table>
+
+  <h3>Speed &amp; Background Work</h3>
+  <table>
+    <tr><th>Component</th><th>What it does, in plain terms</th></tr>
+    <tr><td>redis</td><td>A super-fast short-term memory used for caching and for queuing background jobs.</td></tr>
+    <tr><td>django-redis</td><td>Connects the app to Redis for caching.</td></tr>
+    <tr><td>celery</td><td>The background worker that handles slow tasks without making staff wait.</td></tr>
+  </table>
+
+  <h3>Login &amp; Security</h3>
+  <table>
+    <tr><th>Component</th><th>What it does, in plain terms</th></tr>
+    <tr><td>pyotp</td><td>Generates the rotating codes for two-step verification.</td></tr>
+    <tr><td>qrcode</td><td>Creates the scannable QR code when a user sets up two-step verification.</td></tr>
+    <tr><td>cryptography</td><td>Does the actual scrambling (encryption) of sensitive information.</td></tr>
+    <tr><td>pyjwt</td><td>Handles secure digital "tokens" that prove who a user is.</td></tr>
+    <tr><td>mozilla-django-oidc</td><td>Enables single sign-on with Microsoft/Azure work accounts.</td></tr>
+  </table>
+
+  <h3>Connecting to Outside Services</h3>
+  <table>
+    <tr><th>Component</th><th>What it does, in plain terms</th></tr>
+    <tr><td>boto3</td><td>The official toolkit for talking to Amazon's cloud, including the AI service.</td></tr>
+    <tr><td>requests</td><td>The standard tool for fetching data from other web services.</td></tr>
+    <tr><td>requests-oauthlib</td><td>Adds secure sign-in to those connections.</td></tr>
+    <tr><td>msal</td><td>Microsoft's official library for securely connecting to Outlook/Microsoft 365.</td></tr>
+  </table>
+
+  <h3>Everyday Helpers</h3>
+  <table>
+    <tr><th>Component</th><th>What it does, in plain terms</th></tr>
+    <tr><td>python-dateutil</td><td>Makes working with dates and times reliable.</td></tr>
+    <tr><td>python-decouple / python-dotenv</td><td>Keep settings and secret keys out of the code and in a safe config file.</td></tr>
+    <tr><td>docxtpl</td><td>Fills in Word document templates to produce the briefings and exports.</td></tr>
+  </table>
+
+  <h3>Extra Safeguards</h3>
+  <table>
+    <tr><th>Component</th><th>What it does, in plain terms</th></tr>
+    <tr><td>django-csp</td><td>Blocks malicious content from being injected into the pages.</td></tr>
+    <tr><td>django-ratelimit</td><td>Stops abuse by limiting how often requests can be made.</td></tr>
+  </table>
+
+  <h3>Development-Only (not used in production)</h3>
+  <table>
+    <tr><th>Component</th><th>What it does, in plain terms</th></tr>
+    <tr><td>anthropic</td><td>A temporary tool for testing the AI locally. It is deliberately switched off and forbidden in the live, compliant system.</td></tr>
+  </table>
+
+  <p class="note">Note: HillDesk has no separate website (JavaScript) dependencies — the screens are produced by the engine itself using built-in tools. All components above are open, widely used, and version-controlled.</p>
+</section>
+</div>
+
+<!-- 7 -->
+<div class="page pagebreak">
+<section>
+  <h2 class="section"><span class="num">7</span>Where the App Runs</h2>
+  <p class="lead">HillDesk runs in different "modes" depending on whether it's the real office system or a developer's test setup. The mode decides which AI, login, and database it uses.</p>
+
+  <table>
+    <tr><th>Setting</th><th>Production (real office)</th><th>Development (testing)</th></tr>
+    <tr><td>AI brain</td><td>Amazon Bedrock (approved gov-cloud AI)</td><td>Mock stand-in, or test AI</td></tr>
+    <tr><td>Login</td><td>Microsoft single sign-on</td><td>Simple username/password</td></tr>
+    <tr><td>Database</td><td>PostgreSQL (enterprise)</td><td>SQLite (lightweight file)</td></tr>
+    <tr><td>Network</td><td>Private government cloud, no public internet</td><td>Local computer</td></tr>
+    <tr><td>Background jobs</td><td>Real queue (Celery + Redis)</td><td>Run instantly, in-line</td></tr>
+  </table>
+
+  <div class="analogy">
+    <strong>In short:</strong> the production system is locked down, encrypted, and government-compliant; the development setup is a safe sandbox that mimics the real thing without touching any real data or sensitive services.
+  </div>
+
+  <p class="note">This document is a plain-language companion to the technical architecture records maintained in the project. It reflects the application as built as of June 2026.</p>
+</section>
+</div>
+
+</body>
+</html>

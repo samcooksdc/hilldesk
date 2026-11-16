@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Project metadata and tool configuration. Dependencies stay in
+# requirements*.txt (the deployable app is not a pip package); the exact
+# tested versions are pinned in requirements.lock:
+#   uv pip compile requirements.txt --universal --python-version 3.12 -o requirements.lock
+
+[project]
+name = "hilldesk"
+version = "0.1.0"
+description = "Open-source scheduling workflow for U.S. House offices, with human-reviewed AI extraction."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.10"
+authors = [{ name = "Samuel Cook" }]
+classifiers = [
+    "Framework :: Django :: 5.2",
+    "Programming Language :: Python :: 3",
+    "Private :: Do Not Upload",
+]
+
+[project.urls]
+Documentation = "https://github.com/samcooksdc/hilldesk/tree/main/docs"
+
+# --- pytest (replaces pytest.ini) -------------------------------------------
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.testing"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+testpaths = ["tests", "apps"]
+addopts = "--tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["apps", "config"]
+omit = ["*/migrations/*", "*/tests*"]
+
+# --- ruff ------------------------------------------------------------------
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = ["*/migrations/*", "staticfiles", "venv"]
+
+[tool.ruff.lint]
+# All pyflakes checks (unused imports/variables, undefined names, ...) plus
+# syntax errors. Widen further (pycodestyle, bugbear) once the style backlog
+# is cleared.
+select = ["E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Django settings modules layer on each other with star imports.
+"config/settings/*.py" = ["F403", "F405"]
+
+# --- mypy ------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+plugins = ["mypy_django_plugin.main"]
+# Type hints are required on new code; enforced per-module as files are cleaned.
+files = ["apps/authentication/devtools.py", "apps/event_management/utils/json_embed.py"]
+strict = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.testing"
+
+# --- bandit ----------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", "venv", "staticfiles"]
+skips = ["B101"]

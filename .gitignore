@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# Django
+*.log
+local_settings.py
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3.*
+*.bak
+*.bak-*
+
+# User-uploaded / runtime media
+media/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Local settings / private notes (never publish)
+.claude/settings.local.json
+.claude/worktrees/
+.claude/private/
+CLAUDE.local.md
+.mcp.json
+hilldesk-landing-page.html
+
+# Environment
+.env
+.env.local
+*.env
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Temp files
+tmpclaude-*
+# Ad-hoc screenshots in the repo root only; images under static/ and docs/ are tracked.
+/*.png
+/*.svg
+/*.jpg
+/*.gif
+congress pictures/
+
+# Playwright
+.playwright-mcp/

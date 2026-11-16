@@ -1,0 +1,1158 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Event Editing Interface - HillDesk{% endblock %}
+
+{% block extra_head %}
+<!-- Extracted fields JSON is in the modal container body for DOMParser access -->
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/event-editing-modal-v2.css' %}?v=35">
+<link rel="stylesheet" href="{% static 'css/themes.css' %}">
+{% endblock %}
+
+
+
+{% block content %}
+<!-- Event Editing Modal V2 -->
+<div class="v2-modal-overlay active" id="v2-modal-overlay" aria-hidden="false">
+    <div class="v2-modal-container" id="v2-modal-container" role="dialog" aria-labelledby="v2-title" aria-modal="true"
+         {% if event.requires_human_review %}data-requires-review="true"{% endif %}>
+
+        <!-- Extracted fields JSON for review mode (inside body for DOMParser access) -->
+        {% if extracted_fields_json and extracted_fields_json != '{}' %}
+        <script id="extracted-fields-data" type="application/json">{{ extracted_fields_json|safe }}</script>
+        {% endif %}
+
+        <!-- Email change-request suggestions (review mode, EventChangeReview) -->
+        {% if change_suggestions_json and change_suggestions_json != '[]' %}
+        <script id="change-suggestions-data" type="application/json">{{ change_suggestions_json|safe }}</script>
+        {% endif %}
+
+        <!-- Email Composer context data (read by openEventEditingModal after AJAX inject) -->
+        <script id="email-composer-data" type="application/json">
+        {
+            "eventContext": {
+                "staffer_name": "{{ request.user.get_full_name|default:request.user.email|escapejs }}",
+                "staffer_title": "",
+                "member_name": "{% if request.user.office %}{{ request.user.office.member_name|default:""|escapejs }}{% endif %}"
+            },
+            "emailContext": {
+                "id": "{% if related_emails %}{{ related_emails.0.id|default:""|escapejs }}{% endif %}",
+                "sender": "{% if related_emails %}{{ related_emails.0.sender|default:""|escapejs }}{% endif %}",
+                "sender_name": "{% if related_emails %}{{ related_emails.0.sender_name|default:""|escapejs }}{% endif %}",
+                "subject": "{% if related_emails %}{{ related_emails.0.subject|default:""|escapejs }}{% endif %}"
+            }
+        }
+        </script>
+
+        <!-- Email Panel (Toggleable - on LEFT side) — Three-Section Layout -->
+        <div class="v2-email-panel">
+            <!-- Section 1: Email Thread (top, scrollable) -->
+            <div class="v2-email-thread-section">
+                <div class="v2-email-toolbar">
+                    <div class="v2-email-toolbar-actions">
+                        {% if not event.requires_human_review %}
+                        <button type="button" class="v2-action-btn v2-email-attach-btn" id="v2-email-attach-btn">
+                            <svg class="v2-action-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                            </svg>
+                            Attach email
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div class="v2-email-search">
+                        <span class="v2-email-search-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </span>
+                        <input type="search" class="v2-email-search-input" placeholder="Search emails...">
+                        <div class="v2-search-nav" id="v2-search-nav" style="display: none;">
+                            <span class="v2-search-counter" id="v2-search-counter"></span>
+                            <button type="button" class="v2-search-nav-btn" id="v2-search-prev" aria-label="Previous match">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                            </button>
+                            <button type="button" class="v2-search-nav-btn" id="v2-search-next" aria-label="Next match">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Attach picker: absolute dropdown that floats over the list -->
+                    <div class="v2-attach-picker" id="v2-attach-picker" style="display: none;">
+                        <div class="v2-attach-picker-header">
+                            <span class="v2-attach-picker-title">Attach an email or thread</span>
+                        </div>
+                        <input type="search" class="v2-attach-search-input" id="v2-attach-search-input"
+                               placeholder="Search emails by subject or sender...">
+                        <div class="v2-attach-results" id="v2-attach-results">
+                            <div class="v2-attach-empty">Type to search for emails to attach.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="v2-email-content" id="v2-email-content">
+                    <div id="v2-email-list">
+                    {% if email_groups.threads or email_groups.standalone %}
+                        {# ---- Conversation threads: each its own labelled block + reply button ---- #}
+                        {% for group in email_groups.threads %}
+                        {% with reply_target=group.emails|last first_email=group.emails|first %}
+                        <div class="v2-email-thread-group" data-conversation-id="{{ group.thread.conversation_id }}">
+                            <div class="v2-email-thread-divider">
+                                <div class="v2-email-thread-label">
+                                    <svg class="v2-thread-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                    </svg>
+                                    <span class="v2-thread-subject">{{ group.thread.subject|default:'Conversation' }}</span>
+                                    <span class="v2-thread-count">{{ group.emails|length }} message{{ group.emails|length|pluralize }}</span>
+                                </div>
+                                {% if not event.requires_human_review %}
+                                <button type="button" class="v2-thread-icon-btn v2-thread-detach-btn"
+                                        data-tooltip="Detach this conversation"
+                                        data-action="detach-thread" data-thread-id="{{ group.thread.id }}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                                {% endif %}
+                            </div>
+                            {% for email in group.emails %}
+                            <div class="v2-email-item" data-email-id="{{ email.id }}" data-conversation-id="{{ group.thread.conversation_id }}">
+                                <div class="v2-email-header">
+                                    <span class="v2-email-from">{{ email.sender_name|default:email.sender|default:'Unknown' }}</span>
+                                    <span class="v2-email-header-right">
+                                        <span class="v2-email-date">{{ email.received|date:"M j, Y" }} &middot; {{ email.received|time:"g:i A" }}</span>
+                                        <button type="button" class="v2-thread-icon-btn v2-email-outlook-btn"
+                                                data-tooltip="Open in Outlook"
+                                                data-action="open-outlook" data-weblink="{{ email.complete_email_data.outlook_metadata.web_link|default:'' }}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                                <polyline points="15 3 21 3 21 9"></polyline>
+                                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                                            </svg>
+                                        </button>
+                                        {% if not event.requires_human_review %}
+                                        <button type="button" class="v2-thread-icon-btn v2-email-exclude-btn"
+                                                data-tooltip="Remove this message"
+                                                data-action="exclude-email" data-email-id="{{ email.id }}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </button>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="v2-email-subject">{{ email.subject|default:'No Subject' }}</div>
+                                <div class="v2-email-body v2-email-body-text" style="white-space: pre-wrap;">{% if email.complete_email_data.body.text %}{{ email.complete_email_data.body.text }}{% else %}{{ email.email_preview|default:'No preview available' }}{% endif %}</div>
+                                {% if email.also_on_titles %}<div class="v2-email-also-on" title="This email is also attached to other events">Also on: {{ email.also_on_titles|join:", " }}</div>{% endif %}
+                            </div>
+                            {% endfor %}
+                            <div class="v2-thread-reply-row">
+                                <button type="button" class="v2-thread-reply-btn"
+                                        data-tooltip="Reply to this thread"
+                                        data-reply-email-id="{{ reply_target.id }}"
+                                        data-conversation-id="{{ group.thread.conversation_id }}"
+                                        data-reply-sender="{{ first_email.sender_name|default:first_email.sender }}"
+                                        data-reply-subject="{{ first_email.subject }}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 17l-5-5 5-5"></path>
+                                        <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+                                    </svg>
+                                    Reply
+                                </button>
+                            </div>
+                        </div>
+                        {% endwith %}
+                        {% endfor %}
+
+                        {# ---- Standalone off-thread messages attached to this event ---- #}
+                        {% if email_groups.standalone %}
+                        <div class="v2-email-thread-group v2-email-standalone-group">
+                            <div class="v2-email-thread-divider">
+                                <div class="v2-email-thread-label">
+                                    <svg class="v2-thread-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
+                                    <span class="v2-thread-subject">Other messages</span>
+                                    <span class="v2-thread-count">not on a thread</span>
+                                </div>
+                            </div>
+                            {% for email in email_groups.standalone %}
+                            <div class="v2-email-item" data-email-id="{{ email.id }}">
+                                <div class="v2-email-header">
+                                    <span class="v2-email-from">{{ email.sender_name|default:email.sender|default:'Unknown' }}</span>
+                                    <span class="v2-email-header-right">
+                                        <span class="v2-email-date">{{ email.received|date:"M j, Y" }} &middot; {{ email.received|time:"g:i A" }}</span>
+                                        <button type="button" class="v2-thread-icon-btn v2-email-outlook-btn"
+                                                data-tooltip="Open in Outlook"
+                                                data-action="open-outlook" data-weblink="{{ email.complete_email_data.outlook_metadata.web_link|default:'' }}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                                <polyline points="15 3 21 3 21 9"></polyline>
+                                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                                            </svg>
+                                        </button>
+                                        {% if not event.requires_human_review %}
+                                        <button type="button" class="v2-thread-icon-btn v2-email-detach-btn"
+                                                data-tooltip="Remove this email"
+                                                data-action="detach-email" data-email-id="{{ email.id }}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </button>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="v2-email-subject">{{ email.subject|default:'No Subject' }}</div>
+                                <div class="v2-email-body v2-email-body-text" style="white-space: pre-wrap;">{% if email.complete_email_data.body.text %}{{ email.complete_email_data.body.text }}{% else %}{{ email.email_preview|default:'No preview available' }}{% endif %}</div>
+                                {% if email.also_on_titles %}<div class="v2-email-also-on" title="This email is also attached to other events">Also on: {{ email.also_on_titles|join:", " }}</div>{% endif %}
+                            </div>
+                            <div class="v2-thread-reply-row">
+                                <button type="button" class="v2-thread-reply-btn v2-standalone-reply-btn"
+                                        data-tooltip="Reply to this email"
+                                        data-reply-email-id="{{ email.id }}"
+                                        data-reply-sender="{{ email.sender_name|default:email.sender }}"
+                                        data-reply-subject="{{ email.subject }}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 17l-5-5 5-5"></path>
+                                        <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+                                    </svg>
+                                    Reply
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    {% elif related_emails %}
+                        {% for email in related_emails %}
+                        <div class="v2-email-item" data-email-id="{{ email.id }}">
+                            <div class="v2-email-header">
+                                <span class="v2-email-from">{{ email.sender_name|default:email.sender|default:'Unknown' }}</span>
+                                <span class="v2-email-date">{{ email.received|date:"M j, Y" }}</span>
+                            </div>
+                            <div class="v2-email-subject">{{ email.subject|default:'No Subject' }}</div>
+                            <div class="v2-email-body v2-email-body-text" style="white-space: pre-wrap;">{% if email.complete_email_data.body.text %}{{ email.complete_email_data.body.text }}{% else %}{{ email.email_preview|default:'No preview available' }}{% endif %}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="v2-email-empty">
+                            <div class="v2-email-empty-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </div>
+                            <p class="v2-email-empty-text">No related emails found for this event.</p>
+                        </div>
+                    {% endif %}
+                    </div>
+                    <!-- Sent responses are inserted here dynamically -->
+                    <div id="v2-sent-responses-container"></div>
+
+                    <!-- Inline Reply Composer (hidden by default, appears below emails) -->
+                    <div class="v2-inline-composer-wrapper" id="v2-inline-composer-wrapper" style="display: none;">
+                        <!-- AI + Template Toolbar -->
+                        <div class="v2-email-ai-toolbar" id="v2-email-ai-toolbar">
+                            <div class="v2-ai-toolbar-row">
+                                <div class="v2-template-select-wrapper" id="v2-template-select" data-value="">
+                                    <button class="v2-template-select-trigger" type="button">
+                                        <span class="v2-template-select-value">Select a template...</span>
+                                        <svg class="v2-template-select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </button>
+                                    <div class="v2-template-select-menu" id="v2-template-select-menu">
+                                        <!-- Options loaded dynamically by email-composer.js -->
+                                    </div>
+                                </div>
+                                <button type="button" class="v2-ai-suggest-btn" id="v2-ai-suggest-btn">
+                                    <svg class="v2-ai-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                        <path d="M9 2l1.3 3.7L14 7l-3.7 1.3L9 12 7.7 8.3 4 7l3.7-1.3L9 2z"></path>
+                                        <path d="M17.5 11l.85 2.4 2.4.85-2.4.85-.85 2.4-.85-2.4-2.4-.85 2.4-.85.85-2.4z"></path>
+                                    </svg>
+                                    Generate Draft
+                                </button>
+                            </div>
+                            <div class="v2-ai-refinement-row" id="v2-ai-refinement-row" style="display: none;">
+                                <button type="button" class="v2-refinement-chip" data-refinement="shorter">Shorter</button>
+                                <button type="button" class="v2-refinement-chip" data-refinement="more_formal">More formal</button>
+                                <button type="button" class="v2-refinement-chip" data-refinement="more_friendly">More friendly</button>
+                                <button type="button" class="v2-refinement-chip" data-refinement="try_again">Try again</button>
+                                <span class="v2-ai-remaining" id="v2-ai-remaining">3 remaining</span>
+                            </div>
+                        </div>
+
+                        <!-- Email Composer -->
+                        <div class="v2-email-composer" id="v2-email-composer">
+                            <div class="v2-composer-header">
+                                <div class="v2-composer-field">
+                                    <label class="v2-composer-label">To:</label>
+                                    <input type="text" class="v2-composer-to" id="v2-composer-to" placeholder="Recipient name or email">
+                                </div>
+                                <div class="v2-composer-cc-toggle">
+                                    <button type="button" class="v2-composer-cc-btn" id="v2-composer-cc-btn">CC/BCC</button>
+                                </div>
+                            </div>
+                            <div class="v2-composer-cc-fields" id="v2-composer-cc-fields" style="display: none;">
+                                <div class="v2-composer-field">
+                                    <label class="v2-composer-label">CC:</label>
+                                    <input type="text" class="v2-composer-input" id="v2-composer-cc" placeholder="Add CC recipients...">
+                                </div>
+                                <div class="v2-composer-field">
+                                    <label class="v2-composer-label">BCC:</label>
+                                    <input type="text" class="v2-composer-input" id="v2-composer-bcc" placeholder="Add BCC recipients...">
+                                </div>
+                            </div>
+                            <div class="v2-composer-field">
+                                <label class="v2-composer-label">Subject:</label>
+                                <input type="text" class="v2-composer-input v2-composer-subject" id="v2-composer-subject" placeholder="Email subject...">
+                            </div>
+                            <div class="v2-composer-format-bar">
+                                <button type="button" class="v2-format-btn" data-command="bold" title="Bold"><b>B</b></button>
+                                <button type="button" class="v2-format-btn" data-command="italic" title="Italic"><i>I</i></button>
+                                <button type="button" class="v2-format-btn" data-command="createLink" title="Link">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                    </svg>
+                                </button>
+                                <button type="button" class="v2-format-btn" data-command="insertUnorderedList" title="Bullet list">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                                        <circle cx="3" cy="6" r="1" fill="currentColor"></circle>
+                                        <circle cx="3" cy="12" r="1" fill="currentColor"></circle>
+                                        <circle cx="3" cy="18" r="1" fill="currentColor"></circle>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="v2-composer-body" id="v2-composer-body" contenteditable="true" data-placeholder="Write your response..."></div>
+                            <div class="v2-composer-signature" id="v2-composer-signature"></div>
+                            <div class="v2-composer-var-warning" id="v2-composer-var-warning" style="display: none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                                <span>Some template variables are unfilled</span>
+                            </div>
+                            <div class="v2-composer-actions">
+                                <button type="button" class="v2-composer-cancel-btn" id="v2-composer-cancel">Cancel</button>
+                                <button type="button" class="v2-composer-save-btn" id="v2-composer-save-draft">Save Draft</button>
+                                <button type="button" class="v2-composer-send-btn" id="v2-composer-send">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
+                                    Send
+                                </button>
+                            </div>
+                            <div class="v2-composer-loading" id="v2-composer-loading" style="display: none;">
+                                <div class="v2-composer-loading-spinner"></div>
+                                <span>Generating draft...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Panel (Event Form) -->
+        <div class="v2-main-panel">
+            <form id="v2-event-form" method="post" data-event-id="{{ event.id|default:'new' }}" novalidate>
+                {% csrf_token %}
+                <!-- Hidden field for is_date_range toggle state -->
+                <input type="hidden" name="is_date_range" value="{{ event.is_date_range|yesno:'true,false' }}">
+
+                <!-- Header -->
+                <div class="v2-header">
+                    <div class="v2-header-content">
+                        <input type="text"
+                               class="v2-title-input"
+                               id="v2-title"
+                               name="title"
+                               value="{{ event.title|default:'' }}"
+                               placeholder="Event Title"
+                               aria-label="Event title">
+                        <div class="v2-org-row">
+                            <span class="v2-org-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </span>
+                            <button type="button"
+                                    class="v2-org-input v2-org-jump{% if not event.group %} v2-org-jump-empty{% endif %}"
+                                    id="v2-organization"
+                                    aria-label="Jump to organizations"
+                                    title="Jump to organizations">{{ event.group|default:'Add organization / group' }}</button>
+                        </div>
+                        <!-- Computed meta (datetime, location, type/format) rendered by JS -->
+                        <div class="v2-header-meta" id="v2-header-meta"></div>
+                    </div>
+                    <div class="v2-header-actions">
+                        <button class="v2-close-btn" type="button" id="v2-close-btn" aria-label="Close">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                        <div class="v2-more-menu" id="v2-more-menu">
+                            <button class="v2-more-btn" type="button" id="v2-more-btn" aria-label="More options" aria-expanded="false" aria-haspopup="true">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="5" r="2"></circle>
+                                    <circle cx="12" cy="12" r="2"></circle>
+                                    <circle cx="12" cy="19" r="2"></circle>
+                                </svg>
+                            </button>
+                            <div class="v2-more-dropdown" id="v2-more-dropdown">
+                                <button type="button" class="v2-more-item" id="v2-print-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                        <rect x="6" y="14" width="12" height="8"></rect>
+                                    </svg>
+                                    Print
+                                </button>
+                                <button type="button" class="v2-more-item v2-more-item-danger" id="v2-delete-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
+                                    Delete Event
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="v2-tabs" role="tablist">
+                    <button type="button" class="v2-tab active" role="tab" aria-selected="true" id="v2-event-details-tab">Event Details</button>
+                    <button type="button" class="v2-tab" role="tab" aria-selected="false" id="v2-involved-parties-tab">Involved Parties</button>
+                    <button type="button" class="v2-tab" role="tab" aria-selected="false" id="v2-staff-review-tab">Staff & Review</button>
+                </div>
+
+                <!-- Panel Content -->
+                <div class="v2-panel-content">
+                    <!-- Event Details Tab -->
+                    <div class="v2-tab-panel active" id="v2-event-details-panel" role="tabpanel">
+                        <!-- Time/Date Section -->
+                        <div class="v2-time-section">
+                            <!-- Date Row (full width) -->
+                            <div class="v2-date-row">
+                                <div class="v2-time-grid">
+                                    <!-- Start Date Column -->
+                                    <div class="v2-time-column">
+                                        <span class="v2-column-label" id="v2-start-label">Start Date</span>
+                                        <input type="date"
+                                               class="v2-date-input"
+                                               id="v2-start-date"
+                                               name="start_date"
+                                               value="{{ event.start_date|date:'Y-m-d' }}">
+                                    </div>
+
+                                    <!-- End Date Column -->
+                                    <div class="v2-time-column">
+                                        <span class="v2-column-label" id="v2-end-label">End Date</span>
+                                        <input type="date"
+                                               class="v2-date-input"
+                                               id="v2-end-date"
+                                               name="end_date"
+                                               value="{% if event.end_date %}{{ event.end_date|date:'Y-m-d' }}{% else %}{{ event.start_date|date:'Y-m-d' }}{% endif %}"
+                                               {% if not event.is_longer_than_day and not event.is_date_range %}disabled{% endif %}>
+                                    </div>
+
+                                    <!-- Longer than a day / Repeats (Single Event mode only).
+                                         Mutually exclusive: an occurrence of a series is a single day. -->
+                                    <div class="v2-time-column v2-longer-day-column" id="v2-longer-day-wrapper">
+                                        <div class="v2-checkbox-row">
+                                            <input type="checkbox"
+                                                   class="v2-checkbox"
+                                                   id="v2-longer-than-day"
+                                                   name="is_longer_than_day"
+                                                   {% if event.is_longer_than_day and not event.series_id %}checked{% endif %}>
+                                            <label for="v2-longer-than-day" class="v2-checkbox-label">Longer than a day</label>
+                                        </div>
+                                        <div class="v2-checkbox-row" id="v2-repeats-row">
+                                            <input type="checkbox"
+                                                   class="v2-checkbox"
+                                                   id="v2-repeats"
+                                                   {% if event.series_id %}checked{% endif %}>
+                                            <label for="v2-repeats" class="v2-checkbox-label">Repeats</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Time Row: Time inputs (2/3) + Toggle (1/3) -->
+                            <div class="v2-time-toggle-row">
+                                <!-- Time Content (2/3) -->
+                                <div class="v2-time-content">
+                                    <!-- Single Event Time Fields (visible when Event is selected) -->
+                                    <div class="v2-single-event-times" id="v2-single-event-times">
+                                        <div class="v2-time-grid v2-time-grid-2col">
+                                            <div class="v2-time-column">
+                                                <span class="v2-column-label">Start Time</span>
+                                                <input type="time"
+                                                       class="v2-date-input"
+                                                       id="v2-start-time"
+                                                       name="start_time"
+                                                       value="{% if event.start_time %}{{ event.start_time|time:'H:i' }}{% else %}09:00{% endif %}">
+                                            </div>
+                                            <div class="v2-time-column">
+                                                <span class="v2-column-label">End Time</span>
+                                                <input type="time"
+                                                       class="v2-date-input"
+                                                       id="v2-end-time"
+                                                       name="end_time"
+                                                       value="{% if event.end_time %}{{ event.end_time|time:'H:i' }}{% else %}17:00{% endif %}">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Time Range Details (visible when Range is selected) -->
+                                    <div class="v2-time-range-details hidden" id="v2-time-range-details">
+                                        <div class="v2-field">
+                                            <label class="v2-field-label">Time Range Details</label>
+                                            <textarea class="v2-textarea"
+                                                      id="v2-time-range-text"
+                                                      name="time_notes"
+                                                      rows="1"
+                                                      placeholder="e.g., between 9am and 5pm, morning">{{ event.time_notes|default:'' }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Toggle Column (1/3) -->
+                                <div class="v2-toggle-column">
+                                    <div class="v2-toggle-group" id="v2-toggle-group">
+                                        <button type="button" class="v2-toggle-btn active" id="v2-single-event-btn">Event</button>
+                                        <button type="button" class="v2-toggle-btn" id="v2-time-range-btn">Range</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recurrence (shown when "Repeats" is checked). Rendered by
+                                 RecurrenceEditor; saved via /api/events/<id>/series/, not autosave. -->
+                            <div class="v2-recurrence-section" id="v2-recurrence-section" hidden
+                                 {% if event.series_id %}
+                                 data-series-id="{{ event.series_id }}"
+                                 data-rrule="{{ event.series.rrule }}"
+                                 data-until="{{ event.series.until_date|date:'Y-m-d' }}"
+                                 data-count="{{ event.series.count|default_if_none:'' }}"
+                                 data-active="{{ event.series.is_active|yesno:'true,false' }}"
+                                 {% endif %}>
+                                <div class="v2-recurrence-editor" id="v2-recurrence-editor"></div>
+                                <div class="v2-recurrence-footer">
+                                    <span class="v2-recurrence-summary" id="v2-recurrence-summary"></span>
+                                    <button type="button" class="v2-action-btn v2-recurrence-confirm" id="v2-recurrence-confirm">Create series</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="v2-field">
+                            <label class="v2-field-label">
+                                <span class="v2-field-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
+                                </span>
+                                Location
+                            </label>
+                            <input type="text"
+                                   class="v2-input"
+                                   id="v2-location"
+                                   name="location"
+                                   placeholder="Enter location"
+                                   value="{{ event.location|default:'' }}">
+                        </div>
+
+                        <div class="v2-row-3">
+                            <div class="v2-field">
+                                <label class="v2-field-label">Event Type</label>
+                                <input type="hidden" name="type" id="v2-event-type-value" value="{{ event.type|default:'' }}">
+                                <div class="v2-dropdown-wrapper" data-dropdown-id="v2-event-type">
+                                    <div class="v2-dropdown-trigger" id="v2-event-type" tabindex="0">
+                                        <span class="v2-dropdown-text">{% for type_choice in office_type_choices %}{% if event.type == type_choice.value %}{{ type_choice.label }}{% endif %}{% empty %}{% if event.type == 'event' %}Event{% elif event.type == 'meeting' %}Meeting{% elif event.type == 'speaking' %}Speaking{% endif %}{% endfor %}{% if not event.type %}Select type{% endif %}</span>
+                                    </div>
+                                    <div class="v2-dropdown-menu">
+                                        <div class="v2-dropdown-option{% if not event.type %} selected{% endif %}" data-value="">Select type</div>
+                                        {% for type_choice in office_type_choices %}
+                                        <div class="v2-dropdown-option{% if event.type == type_choice.value %} selected{% endif %}{% if not type_choice.is_active %} inactive{% endif %}"
+                                             data-value="{{ type_choice.value }}">
+                                            {{ type_choice.label }}{% if not type_choice.is_active %} (Inactive){% endif %}
+                                        </div>
+                                        {% empty %}
+                                        <div class="v2-dropdown-option{% if event.type == 'event' %} selected{% endif %}" data-value="event">Event</div>
+                                        <div class="v2-dropdown-option{% if event.type == 'meeting' %} selected{% endif %}" data-value="meeting">Meeting</div>
+                                        <div class="v2-dropdown-option{% if event.type == 'speaking' %} selected{% endif %}" data-value="speaking">Speaking</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="v2-field">
+                                <label class="v2-field-label">
+                                    <span class="v2-field-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                                        </svg>
+                                    </span>
+                                    Format
+                                </label>
+                                <input type="hidden" name="format" id="v2-event-format-value" value="{{ event.format|default:'' }}">
+                                <div class="v2-dropdown-wrapper" data-dropdown-id="v2-event-format">
+                                    <div class="v2-dropdown-trigger" id="v2-event-format" tabindex="0">
+                                        <span class="v2-dropdown-text">{% for format_choice in office_format_choices %}{% if event.format == format_choice.value %}{{ format_choice.label }}{% endif %}{% empty %}{% if event.format == 'in-person' %}In Person{% elif event.format == 'virtual' %}Virtual{% elif event.format == 'hybrid' %}Hybrid{% endif %}{% endfor %}{% if not event.format %}Select format{% endif %}</span>
+                                    </div>
+                                    <div class="v2-dropdown-menu">
+                                        <div class="v2-dropdown-option{% if not event.format %} selected{% endif %}" data-value="">Select format</div>
+                                        {% for format_choice in office_format_choices %}
+                                        <div class="v2-dropdown-option{% if event.format == format_choice.value %} selected{% endif %}{% if not format_choice.is_active %} inactive{% endif %}"
+                                             data-value="{{ format_choice.value }}">
+                                            {{ format_choice.label }}{% if not format_choice.is_active %} (Inactive){% endif %}
+                                        </div>
+                                        {% empty %}
+                                        <div class="v2-dropdown-option{% if event.format == 'in-person' %} selected{% endif %}" data-value="in-person">In Person</div>
+                                        <div class="v2-dropdown-option{% if event.format == 'virtual' %} selected{% endif %}" data-value="virtual">Virtual</div>
+                                        <div class="v2-dropdown-option{% if event.format == 'hybrid' %} selected{% endif %}" data-value="hybrid">Hybrid</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="v2-field">
+                                <label class="v2-field-label">Expected Attendees</label>
+                                <input type="number"
+                                       class="v2-input"
+                                       id="v2-expected-attendees"
+                                       name="expected_attendees"
+                                       placeholder="Number"
+                                       value="{{ event.expected_attendees|default:'' }}">
+                            </div>
+                        </div>
+
+                        <div class="v2-tags-field">
+                            <label class="v2-field-label">
+                                <span class="v2-field-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                                    </svg>
+                                </span>
+                                Event tags
+                            </label>
+                            <div class="v2-tags-container" id="v2-tags-container">
+                                {% for tag in event.tags %}
+                                <div class="v2-tag {% if tag == 'IMPORTANT' %}v2-tag-important{% else %}v2-tag-default{% endif %}">
+                                    <span class="v2-tag-text">{{ tag }}</span>
+                                    <button type="button" class="v2-tag-remove" aria-label="Remove tag">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                                <input type="text" class="v2-tag-input" id="v2-tag-input" placeholder="Add tag...">
+                                <button type="button" class="v2-tag-add" id="v2-tag-add-btn" aria-label="Add tag">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="v2-field">
+                            <label class="v2-field-label">Event description</label>
+                            <textarea class="v2-textarea"
+                                      id="v2-description"
+                                      name="description"
+                                      rows="3"
+                                      placeholder="Enter event description">{{ event.description|default:'' }}</textarea>
+                        </div>
+
+                        <div class="v2-field">
+                            <label class="v2-field-label">Notes</label>
+                            <textarea class="v2-textarea"
+                                      id="v2-event-notes"
+                                      name="notes"
+                                      rows="2"
+                                      placeholder="Enter notes...">{{ event.notes|default:'' }}</textarea>
+                        </div>
+
+                        <!-- Attachments -->
+                        <div class="v2-field v2-attachments-field" data-attachments-section>
+                            <label class="v2-field-label">
+                                <span class="v2-field-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                                    </svg>
+                                </span>
+                                Attachments
+                            </label>
+                            <div class="v2-attachment-list" data-attachment-list>
+                                <div class="v2-attachment-empty-hint">No files attached.</div>
+                            </div>
+                            <button type="button" class="v2-attachment-add-btn" data-attachment-add hidden>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                Add file
+                            </button>
+                            <input type="file" class="v2-attachment-hidden-input" data-attachment-upload hidden>
+                            <input type="file" class="v2-attachment-hidden-input" data-attachment-replace hidden>
+                        </div>
+                    </div>
+
+                    <!-- Involved Parties Tab -->
+                    <div class="v2-tab-panel" id="v2-involved-parties-panel" role="tabpanel">
+
+                        <!-- Normalized contacts (points of contact) linked to this event.
+                             Editable cards managed via the contacts API
+                             (event-contacts-panel.js). -->
+                        <div class="v2-field">
+                            <div class="ec-subheader-row">
+                                <label class="v2-field-label">Contacts</label>
+                                <div class="ec-addbtns-inline">
+                                    <button type="button" id="v2-contact-add-btn" class="ec-card-icon-btn ec-add-icon-btn" data-tooltip="Add existing contact" aria-label="Add existing contact">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M13 20v-1a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v1"></path>
+                                            <circle cx="7" cy="7" r="3.5"></circle>
+                                            <rect x="13.5" y="13" width="8.5" height="5" rx="2.5" transform="rotate(45 17.75 15.5)"></rect>
+                                        </svg>
+                                    </button>
+                                    <button type="button" id="v2-contact-new-btn" class="ec-card-icon-btn ec-add-icon-btn" data-tooltip="Create contact" aria-label="Create contact">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="8.5" cy="7" r="4"></circle>
+                                            <line x1="20" y1="8" x2="20" y2="14"></line>
+                                            <line x1="23" y1="11" x2="17" y2="11"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="v2-contact-list" class="ec-cards"></div>
+                        </div>
+
+                        <!-- Normalized organizations linked to this event. -->
+                        <div class="v2-field">
+                            <div class="ec-subheader-row">
+                                <label class="v2-field-label">Organizations</label>
+                                <div class="ec-addbtns-inline">
+                                    <button type="button" id="v2-org-add-btn" class="ec-card-icon-btn ec-add-icon-btn" data-tooltip="Add existing organization" aria-label="Add existing organization">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <g transform="translate(0 5) scale(0.6)" stroke-width="3.3">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                            </g>
+                                            <rect x="15.8" y="13.2" width="7" height="4.3" rx="2.15" transform="rotate(45 19.3 15.35)"></rect>
+                                        </svg>
+                                    </button>
+                                    <button type="button" id="v2-org-new-btn" class="ec-card-icon-btn ec-add-icon-btn" data-tooltip="Create organization" aria-label="Create organization">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <g transform="translate(0 5) scale(0.6)" stroke-width="3.3">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                            </g>
+                                            <line x1="19.5" y1="8.5" x2="19.5" y2="14.5"></line>
+                                            <line x1="22.5" y1="11.5" x2="16.5" y2="11.5"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="v2-org-list" class="ec-cards"></div>
+                        </div>
+
+                        <input type="hidden" name="primary_staff" id="v2-primary-staff" value="{{ event.primary_staff|default:'' }}">
+                        <div class="v2-field">
+                            <label class="v2-field-label">Assigned Staff</label>
+                            <div class="v2-staff-assignment-container">
+                                <div class="v2-staff-container" id="v2-staff-container">
+                                    {% for staff_member in event.staff %}
+                                    <div class="v2-staff-pill" data-staff-name="{{ staff_member }}">
+                                        <button type="button" class="v2-staff-star{% if staff_member == event.primary_staff %} v2-staff-star-on{% endif %}" data-tooltip="Set as primary staffer" aria-label="Set as primary staffer">
+                                            <svg viewBox="0 0 24 24" stroke-width="2" width="13" height="13"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                        </button>
+                                        <span class="v2-staff-name">{{ staff_member }}</span>
+                                        <button type="button" class="v2-staff-pill-remove" aria-label="Remove">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    {% endfor %}
+                                    <div class="v2-staff-dropdown-wrapper">
+                                        <button type="button" class="v2-add-staff-btn" id="v2-add-staff-btn">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                            </svg>
+                                            Add Staff
+                                        </button>
+                                        <div class="v2-staff-dropdown" id="v2-involved-staff-dropdown">
+                                            <div class="v2-staff-dropdown-header">Office Staff</div>
+                                            <!-- Staff options rendered here by JavaScript -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Staff & Review Tab -->
+                    <div class="v2-tab-panel" id="v2-staff-review-panel" role="tabpanel">
+                        <!-- Assigned Staff Section (top of Staff & Review) -->
+                        <div class="v2-field">
+                            <label class="v2-field-label">
+                                <span class="v2-field-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                    </svg>
+                                </span>
+                                Assigned Staff
+                            </label>
+                            <div class="v2-staff-assignment-container">
+                                <div class="v2-staff-list" id="v2-review-staff-list">
+                                    <!-- Staff pills rendered here by JavaScript -->
+                                </div>
+                                <div class="v2-staff-dropdown-wrapper">
+                                    <button type="button" class="v2-add-staff-btn" id="v2-review-add-staff-btn">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                        Add Staff
+                                    </button>
+                                    <div class="v2-staff-dropdown" id="v2-review-staff-dropdown">
+                                        <div class="v2-staff-dropdown-header">Office Staff</div>
+                                        <!-- Staff options rendered here by JavaScript -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Approval Routing Section -->
+                        <div class="v2-field">
+                            <div class="v2-field-label-row">
+                                <label class="v2-field-label">
+                                    <span class="v2-field-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="9 11 12 14 22 4"></polyline>
+                                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                        </svg>
+                                    </span>
+                                    Approval Routing
+                                </label>
+                                <button type="button" class="v2-remove-routing-btn" id="v2-remove-routing-btn" data-tooltip="Remove Routing" aria-label="Remove Routing" style="display: none;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="v2-approval-routing-container" id="v2-approval-routing">
+                                <div class="v2-no-routing" id="v2-no-routing">
+                                    <span class="v2-empty-state">No approval routing configured</span>
+                                    <button type="button" class="v2-btn-secondary v2-btn-small" id="v2-configure-routing-btn">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                        Configure Routing
+                                    </button>
+                                </div>
+                                <!-- Routing chain will be rendered here by JavaScript -->
+                                <div class="v2-routing-chain" id="v2-routing-chain" style="display: none;">
+                                    <!-- Stages will be dynamically inserted -->
+                                </div>
+                                <!-- Routing builder is rendered in a popup (see #v2-routing-popup-overlay) -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="v2-action-bar">
+                    <div class="v2-action-group">
+                        <span class="v2-action-label">Display email</span>
+                        <button type="button" class="v2-action-btn" id="v2-show-email-btn">
+                            <svg class="v2-action-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <span class="v2-btn-text">Show Email</span>
+                        </button>
+                    </div>
+                    <div class="v2-action-group v2-review-group" id="v2-review-btn-wrapper"{% if not can_user_approve %} style="display: none;"{% endif %}>
+                        <span class="v2-action-label">Approval</span>
+                        <button type="button" class="v2-action-btn{% if can_user_approve %} v2-needs-action{% endif %}" id="v2-review-btn">
+                            <svg class="v2-action-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 11 12 14 22 4"></polyline>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                            </svg>
+                            <span class="v2-btn-text" id="v2-review-btn-text">{% if can_user_approve %}Review{% else %}No Routing{% endif %}</span>
+                        </button>
+                    </div>
+                    <div class="v2-action-group v2-status-group">
+                        <span class="v2-action-label">Event status</span>
+                        <!-- Hidden input to store the actual value for form submission -->
+                        <input type="hidden" name="status" id="v2-status-value" value="{{ event.status|default:'received' }}">
+                        <!-- Custom dropdown wrapper -->
+                        <div class="v2-status-dropdown-wrapper" id="v2-status-dropdown-wrapper">
+                            <div class="v2-status-select status-{{ event.status|default:'received' }}" id="v2-status" tabindex="0">
+                                <span class="v2-status-text">{% for status in office_status_choices %}{% if event.status == status.value %}{{ status.label }}{% endif %}{% empty %}Received{% endfor %}</span>
+                            </div>
+                            <div class="v2-status-dropdown-menu" id="v2-status-dropdown-menu">
+                                {% for status in office_status_choices %}
+                                <div class="v2-status-dropdown-option status-{{ status.value }}{% if event.status == status.value %} selected{% endif %}{% if not status.is_active %} inactive{% endif %}"
+                                     data-value="{{ status.value }}">
+                                    {{ status.label }}{% if not status.is_active %} (Inactive){% endif %}
+                                </div>
+                                {% empty %}
+                                <!-- Fallback if no office choices available -->
+                                <div class="v2-status-dropdown-option status-received{% if event.status == 'received' %} selected{% endif %}" data-value="received">Received</div>
+                                <div class="v2-status-dropdown-option status-hold{% if event.status == 'hold' %} selected{% endif %}" data-value="hold">Hold</div>
+                                <div class="v2-status-dropdown-option status-scheduled{% if event.status == 'scheduled' %} selected{% endif %}" data-value="scheduled">Scheduled</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Approval Review Popup -->
+<div class="v2-approval-popup-overlay" id="v2-approval-popup-overlay">
+    <div class="v2-approval-popup" id="v2-approval-popup">
+        <button type="button" class="v2-approval-popup-close" id="v2-approval-popup-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+        <div class="v2-approval-popup-header">
+            <h3 id="v2-approval-popup-title">Review Event</h3>
+        </div>
+        <div class="v2-approval-popup-body">
+            <div class="v2-field">
+                <label class="v2-field-label">Notes (optional)</label>
+                <textarea class="v2-textarea" id="v2-approval-notes" rows="3"
+                          placeholder="Add notes for the approval decision..."></textarea>
+            </div>
+        </div>
+        <div class="v2-approval-popup-actions v2-approval-popup-actions-end">
+            <div class="v2-approval-popup-right-actions">
+                <button type="button" class="v2-btn-secondary" id="v2-approval-popup-cancel">Cancel</button>
+                <button type="button" class="v2-btn-secondary" id="v2-approval-popup-send-back">Send Back</button>
+                <button type="button" class="v2-btn-success" id="v2-approval-popup-approve">Approve</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approval Routing Builder Popup -->
+<div class="v2-approval-popup-overlay v2-routing-popup-overlay" id="v2-routing-popup-overlay">
+    <div class="v2-approval-popup v2-routing-popup" id="v2-routing-popup">
+        <button type="button" class="v2-approval-popup-close" id="v2-routing-popup-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+        <div class="v2-approval-popup-header">
+            <h3>Configure Approval Routing</h3>
+        </div>
+        <div class="v2-approval-popup-body v2-routing-popup-body">
+            <!-- Saved routes: dropdown of presets + save-as-preset (like filter presets) -->
+            <div class="v2-routing-presets-bar">
+                <div class="v2-routing-presets-dropdown" id="v2-routing-presets-dropdown">
+                    <button type="button" class="v2-routing-presets-trigger" id="v2-routing-presets-trigger" aria-haspopup="true" aria-expanded="false">
+                        <svg class="v2-routing-presets-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        <span class="v2-routing-presets-label" id="v2-routing-presets-label">Saved routes</span>
+                        <svg class="v2-routing-presets-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="v2-routing-presets-menu" id="v2-routing-presets-menu" role="menu">
+                        <div class="v2-routing-presets-list" id="v2-routing-presets-list"></div>
+                    </div>
+                </div>
+                <div class="v2-routing-presets-save" id="v2-routing-presets-save">
+                    <!-- Save button / inline name form rendered by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Stage 1: Creator (read-only, auto-approved on save) -->
+            <div class="v2-routing-stage-item v2-stage-creator">
+                <span class="v2-routing-stage-number">1</span>
+                <span class="v2-routing-stage-label">You (auto-approved on save)</span>
+                <span class="v2-routing-stage-badge">Creator</span>
+            </div>
+
+            <!-- Reviewer stages (user-configurable) -->
+            <div class="v2-routing-stages" id="v2-routing-stages">
+                <!-- Stages rendered here by JavaScript -->
+            </div>
+            <button type="button" class="v2-add-stage-btn" id="v2-add-stage-btn">
+                + Add Reviewer
+            </button>
+        </div>
+        <div class="v2-approval-popup-actions">
+            <div class="v2-approval-popup-right-actions">
+                <button type="button" class="v2-btn-secondary" id="v2-routing-cancel">Cancel</button>
+                <button type="button" class="v2-btn-success" id="v2-routing-save">Save &amp; Start Review</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Draft Prompt Popup -->
+<div class="v2-draft-prompt-overlay" id="v2-draft-prompt-overlay" style="display: none;">
+    <div class="v2-draft-prompt-popup">
+        <div class="v2-draft-prompt-header">
+            <h3>Generate Draft</h3>
+        </div>
+        <div class="v2-draft-prompt-body">
+            <label class="v2-field-label" for="v2-draft-prompt-input">Instructions for AI (optional)</label>
+            <textarea class="v2-textarea" id="v2-draft-prompt-input" rows="3"
+                      placeholder="e.g., Confirm attendance and ask about parking details..."></textarea>
+        </div>
+        <div class="v2-draft-prompt-actions">
+            <button type="button" class="v2-btn-secondary" id="v2-draft-prompt-cancel">Cancel</button>
+            <button type="button" class="v2-ai-suggest-btn" id="v2-draft-prompt-generate">Generate</button>
+        </div>
+    </div>
+</div>
+
+<!-- Send Warning Popup: unfilled template variables -->
+<div class="v2-draft-prompt-overlay" id="v2-send-warning-overlay" style="display: none;">
+    <div class="v2-draft-prompt-popup v2-plain-popup">
+        <div class="v2-draft-prompt-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <h3>Unfilled template variables</h3>
+        </div>
+        <div class="v2-draft-prompt-body">
+            <p style="margin: 0 0 10px; font-size: 13px; color: var(--v2-text-secondary, #64748b);">
+                Your message still contains placeholders that weren't filled in. They will be sent exactly as shown:
+            </p>
+            <div class="v2-send-warning-list" id="v2-send-warning-list"></div>
+        </div>
+        <div class="v2-draft-prompt-actions">
+            <button type="button" class="v2-btn-secondary" id="v2-send-warning-cancel">Go back &amp; edit</button>
+            <button type="button" class="v2-composer-send-btn" id="v2-send-warning-confirm">Send anyway</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/email-composer.js' %}?v=10"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Event Editing Modal V2 initializing...');
+
+    // The page's .content-wrapper has a transform, which would make the
+    // position:fixed overlay resolve against it (collapsed height) instead of
+    // the viewport — breaking vertical centering. Relocate to <body> so the
+    // overlay truly fills and centers within the viewport.
+    var v2Overlay = document.getElementById('v2-modal-overlay');
+    if (v2Overlay && v2Overlay.parentElement !== document.body) {
+        document.body.appendChild(v2Overlay);
+    }
+
+    // Initialize Email Composer with event and email context
+    if (window.emailComposer) {
+        window.emailComposer.init(
+            {
+                staffer_name: '{{ request.user.get_full_name|default:request.user.email|escapejs }}',
+                staffer_title: '',
+                member_name: '{% if request.user.office %}{{ request.user.office.member_name|default:""|escapejs }}{% endif %}',
+            },
+            {
+                id: '{% if related_emails %}{{ related_emails.0.id|default:""|escapejs }}{% endif %}',
+                sender: '{% if related_emails %}{{ related_emails.0.sender|default:""|escapejs }}{% endif %}',
+                sender_name: '{% if related_emails %}{{ related_emails.0.sender_name|default:""|escapejs }}{% endif %}',
+                subject: '{% if related_emails %}{{ related_emails.0.subject|default:""|escapejs }}{% endif %}',
+            }
+        );
+        console.log('Email Composer initialized');
+    }
+
+    // Use existing instance from auto-init (don't create a new one!)
+    // This ensures the same instance has the event listeners AND review mode
+    if (typeof initEventEditingModalV2 !== 'undefined') {
+        // Get the singleton instance
+        var modal = initEventEditingModalV2();
+        console.log('Event Editing Modal V2 using existing instance');
+
+        // Check for review mode
+        const extractedFieldsScript = document.getElementById('extracted-fields-data');
+        const container = document.getElementById('v2-modal-container');
+        const requiresReview = container && container.dataset.requiresReview === 'true';
+
+        if (requiresReview && extractedFieldsScript) {
+            try {
+                const extractedFields = JSON.parse(extractedFieldsScript.textContent);
+                console.log('Extracted fields loaded:', extractedFields);
+
+                // Check if there are pending fields
+                const hasPendingFields = Object.values(extractedFields).some(
+                    field => field && field.status === 'pending'
+                );
+
+                if (hasPendingFields) {
+                    console.log('Initializing review mode with pending fields...');
+                    // Give the modal a moment to fully render
+                    setTimeout(function() {
+                        if (modal.initializeReviewMode) {
+                            modal.initializeReviewMode(extractedFields);
+                            console.log('Review mode initialized, isReviewMode:', modal.isReviewMode);
+                        } else {
+                            console.error('initializeReviewMode method not found');
+                        }
+                    }, 300);
+                } else {
+                    console.log('No pending fields to review');
+                }
+            } catch (e) {
+                console.error('Failed to parse extracted fields:', e);
+            }
+        } else {
+            console.log('Review mode not required or no extracted fields');
+        }
+    } else {
+        console.error('initEventEditingModalV2 function not found');
+    }
+
+    // Force overlay visibility
+    const overlay = document.getElementById('v2-modal-overlay');
+    if (overlay) {
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+});
+</script>
+{% endblock %}

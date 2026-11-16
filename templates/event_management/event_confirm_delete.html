@@ -1,0 +1,444 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Delete Event - {{ event.group }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .delete-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        overflow: hidden;
+    }
+    
+    .delete-header {
+        padding: 24px;
+        background: #fce8e6;
+        border-bottom: 1px solid #f28b82;
+        text-align: center;
+    }
+    
+    .delete-icon {
+        font-size: 48px;
+        color: #d93025;
+        margin-bottom: 16px;
+    }
+    
+    .delete-title {
+        font-size: 24px;
+        font-weight: 500;
+        color: #d93025;
+        margin: 0 0 8px 0;
+    }
+    
+    .delete-subtitle {
+        color: #5f6368;
+        font-size: 16px;
+        margin: 0;
+    }
+    
+    .delete-content {
+        padding: 24px;
+    }
+    
+    .warning-message {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 24px;
+        color: #856404;
+    }
+    
+    .warning-title {
+        font-weight: 500;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .event-summary {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .summary-title {
+        font-size: 18px;
+        font-weight: 500;
+        color: #202124;
+        margin: 0 0 16px 0;
+    }
+    
+    .summary-grid {
+        display: grid;
+        gap: 12px;
+    }
+    
+    .summary-item {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px;
+        align-items: start;
+    }
+    
+    .summary-label {
+        font-weight: 500;
+        color: #5f6368;
+        font-size: 14px;
+    }
+    
+    .summary-value {
+        color: #202124;
+        font-size: 14px;
+    }
+    
+    .event-type-badge {
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+    
+    .type-meeting {
+        background: #e8f0fe;
+        color: #1a73e8;
+    }
+    
+    .type-event {
+        background: #e6f4ea;
+        color: #137333;
+    }
+    
+    .type-speaking {
+        background: #fef7e0;
+        color: #b06000;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .status-received {
+        background: #fef7e0;
+        color: #b06000;
+    }
+    
+    .status-scheduled {
+        background: #e6f4ea;
+        color: #137333;
+    }
+    
+    .status-hold {
+        background: #fce8e6;
+        color: #d93025;
+    }
+    
+    .status-canceled {
+        background: #f1f3f4;
+        color: #5f6368;
+    }
+    
+    .consequences-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .consequences-list li {
+        padding: 8px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .consequences-list li::before {
+        content: "⚠️";
+        flex-shrink: 0;
+    }
+    
+    .delete-actions {
+        background: #f8f9fa;
+        padding: 20px 24px;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .btn {
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-danger {
+        background: #d93025;
+        color: white;
+        border-color: #d93025;
+    }
+    
+    .btn-danger:hover {
+        background: #b52d20;
+        border-color: #b52d20;
+    }
+    
+    .btn-secondary {
+        background: white;
+        color: #5f6368;
+        border-color: #dadce0;
+    }
+    
+    .btn-secondary:hover {
+        background: #f8f9fa;
+        border-color: #1a73e8;
+        color: #1a73e8;
+    }
+    
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #5f6368;
+        text-decoration: none;
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+    
+    .back-link:hover {
+        color: #1a73e8;
+    }
+    
+    .confirmation-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 16px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+    }
+    
+    .confirmation-checkbox input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #d93025;
+    }
+    
+    .confirmation-text {
+        font-size: 14px;
+        color: #202124;
+        font-weight: 500;
+    }
+    
+    @media (max-width: 768px) {
+        .delete-container {
+            margin: 0 16px;
+        }
+        
+        .delete-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .btn {
+            justify-content: center;
+        }
+        
+        .summary-item {
+            grid-template-columns: 1fr;
+            gap: 4px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <a href="{% url 'event_management:event_detail' event.pk %}" class="back-link">
+        ← Back to Event Details
+    </a>
+    
+    <div class="delete-container">
+        <div class="delete-header">
+            <div class="delete-icon">🗑️</div>
+            <h1 class="delete-title">Delete Event</h1>
+            <p class="delete-subtitle">This action cannot be undone</p>
+        </div>
+        
+        <div class="delete-content">
+            <div class="warning-message">
+                <div class="warning-title">
+                    ⚠️ Warning
+                </div>
+                <p>You are about to permanently delete this event. This action cannot be undone and will result in the following consequences:</p>
+                
+                <ul class="consequences-list">
+                    <li>The event will be permanently removed from the system</li>
+                    <li>All associated change history will be preserved for audit purposes</li>
+                    <li>Any calendar entries may need to be manually removed</li>
+                    <li>Email responses related to this event will remain in the system</li>
+                    {% if event.original_email_id %}
+                    <li>The original email processing record will be updated to reflect the deletion</li>
+                    {% endif %}
+                </ul>
+            </div>
+            
+            <!-- Event Summary -->
+            <div class="event-summary">
+                <h2 class="summary-title">Event to be deleted:</h2>
+                
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-label">Event:</div>
+                        <div class="summary-value">
+                            <strong>{{ event.group }}</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-item">
+                        <div class="summary-label">Type:</div>
+                        <div class="summary-value">
+                            <span class="event-type-badge type-{{ event.type }}">
+                                {{ event.get_type_display }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-item">
+                        <div class="summary-label">Date:</div>
+                        <div class="summary-value">{{ event.start_date|date:"F j, Y" }}{% if event.start_time %} {{ event.start_time|time:"g:i A" }}{% endif %}</div>
+                    </div>
+                    
+                    <div class="summary-item">
+                        <div class="summary-label">Time:</div>
+                        <div class="summary-value">{{ event.time }}</div>
+                    </div>
+                    
+                    <div class="summary-item">
+                        <div class="summary-label">Location:</div>
+                        <div class="summary-value">{{ event.location }}</div>
+                    </div>
+                    
+                    <div class="summary-item">
+                        <div class="summary-label">Status:</div>
+                        <div class="summary-value">
+                            <span class="status-badge status-{{ event.status }}">
+                                {{ event.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-item">
+                        <div class="summary-label">Contact:</div>
+                        <div class="summary-value">
+                            {{ event.point_of_contact_name }}<br>
+                            <small class="text-muted">{{ event.point_of_contact_email }}</small>
+                        </div>
+                    </div>
+                    
+                    {% if event.details %}
+                    <div class="summary-item">
+                        <div class="summary-label">Details:</div>
+                        <div class="summary-value">{{ event.details|truncatechars:100 }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="summary-item">
+                        <div class="summary-label">Created:</div>
+                        <div class="summary-value">
+                            {{ event.created|date:"M j, Y g:i A" }} by {{ event.created_by.get_full_name|default:event.created_by.username }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Confirmation -->
+            <form method="post" id="deleteForm">
+                {% csrf_token %}
+                
+                <div class="confirmation-checkbox">
+                    <input type="checkbox" id="confirmDelete" required>
+                    <label for="confirmDelete" class="confirmation-text">
+                        I understand that this action cannot be undone and want to permanently delete this event.
+                    </label>
+                </div>
+            </form>
+        </div>
+        
+        <div class="delete-actions">
+            <a href="{% url 'event_management:event_detail' event.pk %}" class="btn btn-secondary">
+                Cancel
+            </a>
+            
+            <button type="submit" form="deleteForm" class="btn btn-danger" id="deleteButton" disabled>
+                🗑️ Delete Event Permanently
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmCheckbox = document.getElementById('confirmDelete');
+    const deleteButton = document.getElementById('deleteButton');
+    const deleteForm = document.getElementById('deleteForm');
+    
+    // Enable/disable delete button based on confirmation checkbox
+    confirmCheckbox.addEventListener('change', function() {
+        deleteButton.disabled = !this.checked;
+    });
+    
+    // Add final confirmation on form submit
+    deleteForm.addEventListener('submit', function(e) {
+        if (!confirmCheckbox.checked) {
+            e.preventDefault();
+            alert('Please confirm that you want to delete this event.');
+            return false;
+        }
+        
+        const eventName = '{{ event.group|escapejs }}';
+        const confirmMessage = `Are you absolutely sure you want to delete the event "${eventName}"?\n\nThis action cannot be undone.`;
+        
+        if (!confirm(confirmMessage)) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Show loading state
+        deleteButton.disabled = true;
+        deleteButton.innerHTML = '⏳ Deleting...';
+        
+        return true;
+    });
+    
+    // Keyboard shortcut (Escape to cancel)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            window.location.href = '{% url "event_management:event_detail" event.pk %}';
+        }
+    });
+});
+</script>
+{% endblock %}

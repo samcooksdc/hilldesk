@@ -1,0 +1,848 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ event.group }} - Event Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .event-detail-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .event-header {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .event-title {
+        font-size: 28px;
+        font-weight: 500;
+        color: #202124;
+        margin: 0 0 8px 0;
+    }
+
+    .event-subtitle {
+        color: #5f6368;
+        font-size: 16px;
+        margin: 0 0 16px 0;
+    }
+
+    .event-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: #5f6368;
+    }
+
+    .meta-icon {
+        font-size: 16px;
+    }
+
+    .event-type-badge {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .type-meeting {
+        background: #e8f0fe;
+        color: #1a73e8;
+    }
+
+    .type-event {
+        background: #e6f4ea;
+        color: #137333;
+    }
+
+    .type-speaking {
+        background: #fef7e0;
+        color: #b06000;
+    }
+
+    .status-badge {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-received {
+        background: #fef7e0;
+        color: #b06000;
+    }
+
+    .status-scheduled {
+        background: #e6f4ea;
+        color: #137333;
+    }
+
+    .status-hold {
+        background: #fce8e6;
+        color: #d93025;
+    }
+
+    .status-canceled {
+        background: #f1f3f4;
+        color: #5f6368;
+    }
+
+    .event-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .content-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .info-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 16px 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .card-title {
+        font-size: 16px;
+        font-weight: 500;
+        color: #202124;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .card-content {
+        padding: 20px;
+    }
+
+    .info-grid {
+        display: grid;
+        gap: 16px;
+    }
+
+    .info-item {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px;
+        align-items: start;
+    }
+
+    .info-label {
+        font-weight: 500;
+        color: #5f6368;
+        font-size: 14px;
+    }
+
+    .info-value {
+        color: #202124;
+        font-size: 14px;
+        word-break: break-word;
+    }
+
+    .info-value.empty {
+        color: #9aa0a6;
+        font-style: italic;
+    }
+
+    .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .tag {
+        padding: 4px 12px;
+        background: #e8f0fe;
+        color: #1a73e8;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .contact-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 8px;
+    }
+
+    .contact-name {
+        font-weight: 500;
+        color: #202124;
+        margin-bottom: 8px;
+    }
+
+    .contact-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 14px;
+        color: #5f6368;
+    }
+
+    .contact-link {
+        color: #1a73e8;
+        text-decoration: none;
+    }
+
+    .contact-link:hover {
+        text-decoration: underline;
+    }
+
+    .notes-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 16px;
+    }
+
+    .notes-title {
+        font-weight: 500;
+        color: #202124;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .notes-content {
+        color: #5f6368;
+        font-size: 14px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+    }
+
+    .change-history {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .history-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .history-item:last-child {
+        border-bottom: none;
+    }
+
+    .history-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+
+    .history-user {
+        font-weight: 500;
+        color: #202124;
+        font-size: 14px;
+    }
+
+    .history-time {
+        color: #5f6368;
+        font-size: 12px;
+    }
+
+    .history-change {
+        font-size: 13px;
+        color: #5f6368;
+    }
+
+    .history-field {
+        font-weight: 500;
+        color: #1a73e8;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: #1a73e8;
+        color: white;
+        border-color: #1a73e8;
+    }
+
+    .btn-primary:hover {
+        background: #1557b0;
+        border-color: #1557b0;
+    }
+
+    .btn-secondary {
+        background: white;
+        color: #5f6368;
+        border-color: #dadce0;
+    }
+
+    .btn-secondary:hover {
+        background: #f8f9fa;
+        border-color: #1a73e8;
+        color: #1a73e8;
+    }
+
+    .btn-danger {
+        background: #d93025;
+        color: white;
+        border-color: #d93025;
+    }
+
+    .btn-danger:hover {
+        background: #b52d20;
+        border-color: #b52d20;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #5f6368;
+        text-decoration: none;
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+
+    .back-link:hover {
+        color: #1a73e8;
+    }
+
+    .email-preview {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 16px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.4;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .recommendation-badge {
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+        background: #e8f0fe;
+        color: #1a73e8;
+    }
+
+    @media (max-width: 768px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .event-meta {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .event-actions {
+            flex-direction: column;
+        }
+
+        .info-item {
+            grid-template-columns: 1fr;
+            gap: 4px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="event-detail-container">
+    <a href="{% url 'event_management:events' %}" class="back-link">
+        ← Back to Events
+    </a>
+
+    <!-- Event Header -->
+    <div class="event-header">
+        <h1 class="event-title">{{ event.group }}</h1>
+        <p class="event-subtitle">{{ event.get_type_display }} • {{ event.start_date|date:"F j, Y" }}</p>
+
+        <div class="event-meta">
+            <span class="event-type-badge type-{{ event.type }}">
+                {{ event.get_type_display }}
+            </span>
+
+            <span class="status-badge status-{{ event.status }}">
+                {{ event.get_status_display }}
+            </span>
+
+            {% if event.staff_recommendation %}
+            <span class="recommendation-badge">
+                Recommendation: {{ event.get_staff_recommendation_display }}
+            </span>
+            {% endif %}
+
+            <div class="meta-item">
+                <span class="meta-icon">📅</span>
+                <span>{{ event.start_date|date:"F j, Y" }}{% if event.start_time %} {{ event.start_time|time:"g:i A" }}{% endif %}</span>
+            </div>
+
+            <div class="meta-item">
+                <span class="meta-icon">📍</span>
+                <span>{{ event.location }}</span>
+            </div>
+
+            <div class="meta-item">
+                <span class="meta-icon">⏰</span>
+                <span>{{ event.time }}</span>
+            </div>
+        </div>
+
+        <div class="event-actions">
+            <a href="{% url 'event_management:event_update' event.pk %}" class="btn btn-primary">
+                ✏️ Edit Event
+            </a>
+
+            {% if original_email %}
+            <button type="button" class="btn btn-secondary" onclick="toggleEmailPreview()">
+                📧 View Original Email
+            </button>
+            {% endif %}
+
+            {% if email_templates %}
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#responseModal">
+                📤 Send Response
+            </button>
+            {% endif %}
+
+            <a href="{% url 'event_management:event_delete' event.pk %}" class="btn btn-danger"
+                onclick="return confirm('Are you sure you want to delete this event?')">
+                🗑️ Delete Event
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="content-grid">
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Event Details -->
+            <div class="info-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        📋 Event Details
+                    </h2>
+                </div>
+                <div class="card-content">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Description:</div>
+                            <div class="info-value {% if not event.details %}empty{% endif %}">
+                                {{ event.details|default:"No description provided" }}
+                            </div>
+                        </div>
+
+                        {% if event.end_date %}
+                        <div class="info-item">
+                            <div class="info-label">End Date:</div>
+                            <div class="info-value">{{ event.end_date|date:"F j, Y" }}{% if event.end_time %} {{ event.end_time|time:"g:i A" }}{% endif %}</div>
+                        </div>
+                        {% endif %}
+
+                        {% if event.legislative_topics %}
+                        <div class="info-item">
+                            <div class="info-label">Topics:</div>
+                            <div class="info-value">
+                                <div class="tag-list">
+                                    {% for topic in event.legislative_topics %}
+                                    <span class="tag">{{ topic }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if event.participants %}
+                        <div class="info-item">
+                            <div class="info-label">Participants:</div>
+                            <div class="info-value">
+                                <div class="tag-list">
+                                    {% for participant in event.participants %}
+                                    <span class="tag">{{ participant }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if event.staff %}
+                        <div class="info-item">
+                            <div class="info-label">Staff Assigned:</div>
+                            <div class="info-value">
+                                <div class="tag-list">
+                                    {% for staff_member in event.staff %}
+                                    <span class="tag">{{ staff_member }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Notes Sections -->
+                    {% if event.schedule_notes %}
+                    <div class="notes-section">
+                        <div class="notes-title">Schedule Notes</div>
+                        <div class="notes-content">{{ event.schedule_notes }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if event.campaign_notes %}
+                    <div class="notes-section">
+                        <div class="notes-title">🗳️ Campaign Notes</div>
+                        <div class="notes-content">{{ event.campaign_notes }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if event.hms_notes %}
+                    <div class="notes-section">
+                        <div class="notes-title">🏛️ HMS Notes</div>
+                        <div class="notes-content">{{ event.hms_notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Original Email (if exists) -->
+            {% if original_email %}
+            <div class="info-card" id="emailPreview" style="display: none;">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        📧 Original Email
+                    </h2>
+                </div>
+                <div class="card-content">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Subject:</div>
+                            <div class="info-value">{{ original_email.subject }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">From:</div>
+                            <div class="info-value">{{ original_email.sender }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Received:</div>
+                            <div class="info-value">{{ original_email.received|date:"F j, Y g:i A" }}</div>
+                        </div>
+                    </div>
+
+                    <div class="email-preview">{{ original_email.raw_content|default:"Email content not available" }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Point of Contact -->
+            <div class="info-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        📞 Point of Contact
+                    </h2>
+                </div>
+                <div class="card-content">
+                    <div class="contact-card">
+                        <div class="contact-name">{{ event.point_of_contact_name }}</div>
+                        <div class="contact-info">
+                            <div>
+                                📧 <a href="mailto:{{ event.point_of_contact_email }}" class="contact-link">
+                                    {{ event.point_of_contact_email }}
+                                </a>
+                            </div>
+                            {% if event.point_of_contact_phone %}
+                            <div>
+                                📱 <a href="tel:{{ event.point_of_contact_phone }}" class="contact-link">
+                                    {{ event.point_of_contact_phone }}
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Metadata -->
+            <div class="info-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        ℹ️ Event Information
+                    </h2>
+                </div>
+                <div class="card-content">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Created:</div>
+                            <div class="info-value">{{ event.created|date:"M j, Y g:i A" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Created By:</div>
+                            <div class="info-value">{{ event.created_by.get_full_name|default:event.created_by.username
+                                }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Last Modified:</div>
+                            <div class="info-value">{{ event.modified|date:"M j, Y g:i A" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Modified By:</div>
+                            <div class="info-value">{{
+                                event.modified_by.get_full_name|default:event.modified_by.username }}</div>
+                        </div>
+                        {% if event.hms_review_status %}
+                        <div class="info-item">
+                            <div class="info-label">HMS Review:</div>
+                            <div class="info-value">{{ event.get_hms_review_status_display }}</div>
+                        </div>
+                        {% endif %}
+                        <div class="info-item">
+                            <div class="info-label">Classification:</div>
+                            <div class="info-value">{{ event.get_data_classification_display }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Change History -->
+            {% if change_history %}
+            <div class="info-card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        📝 Recent Changes
+                    </h2>
+                </div>
+                <div class="card-content">
+                    <div class="change-history">
+                        {% for change in change_history %}
+                        <div class="history-item">
+                            <div class="history-header">
+                                <span class="history-user">{{ change.user.get_full_name|default:change.user.username
+                                    }}</span>
+                                <span class="history-time">{{ change.timestamp|date:"M j, g:i A" }}</span>
+                            </div>
+                            <div class="history-change">
+                                {% if change.field == 'created' %}
+                                Created the event
+                                {% elif change.field == 'deleted' %}
+                                Deleted the event
+                                {% else %}
+                                Changed <span class="history-field">{{ change.field }}</span>
+                                {% if change.old_value and change.new_value %}
+                                from "{{ change.old_value|truncatechars:30 }}" to "{{ change.new_value|truncatechars:30
+                                }}"
+                                {% elif change.new_value %}
+                                to "{{ change.new_value|truncatechars:30 }}"
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Email Response Modal -->
+{% if email_templates %}
+<div class="modal fade" id="responseModal" tabindex="-1" aria-labelledby="responseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="responseModalLabel">Send Email Response</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="responseForm">
+                    <div class="mb-3">
+                        <label for="templateSelect" class="form-label">Select Template:</label>
+                        <select id="templateSelect" class="form-select">
+                            <option value="">Choose a template...</option>
+                            {% for template in email_templates %}
+                            <option value="{{ template.id }}">{{ template.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div id="templatePreview" style="display: none;">
+                        <div class="mb-3">
+                            <label for="emailSubject" class="form-label">Subject:</label>
+                            <input type="text" id="emailSubject" class="form-control" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="emailBody" class="form-label">Message:</label>
+                            <textarea id="emailBody" class="form-control" rows="8" readonly></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="sendResponseBtn" disabled>Send Response</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% csrf_token %}
+<script>
+    function toggleEmailPreview() {
+        const preview = document.getElementById('emailPreview');
+        if (preview.style.display === 'none') {
+            preview.style.display = 'block';
+            preview.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+</script>
+
+{% if email_templates %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const templateSelect = document.getElementById('templateSelect');
+        const templatePreview = document.getElementById('templatePreview');
+        const emailSubject = document.getElementById('emailSubject');
+        const emailBody = document.getElementById('emailBody');
+        const sendBtn = document.getElementById('sendResponseBtn');
+
+        templateSelect.addEventListener('change', function () {
+            const templateId = this.value;
+
+            if (templateId) {
+                // Preview template
+                fetch(`/events/email-templates/${templateId}/preview/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}'
+                    },
+                    body: new URLSearchParams({
+                        'sender_name': '{{ event.point_of_contact_name|escapejs }}',
+                        'event_type': '{{ event.get_type_display|escapejs }}',
+                        'event_date': '{{ event.start_date|date:"F j, Y"|escapejs }}',
+                        'event_time': '{{ event.time|escapejs }}',
+                        'representative_name': '{{ user.get_full_name|default:user.username|escapejs }}'
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            alert('Error previewing template: ' + data.error);
+                        } else {
+                            emailSubject.value = data.subject;
+                            emailBody.value = data.body;
+                            templatePreview.style.display = 'block';
+                            sendBtn.disabled = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error previewing template');
+                    });
+            } else {
+                templatePreview.style.display = 'none';
+                sendBtn.disabled = true;
+            }
+        });
+
+        sendBtn.addEventListener('click', function () {
+            const templateId = templateSelect.value;
+
+            if (!templateId) {
+                alert('Please select a template');
+                return;
+            }
+
+            if (confirm('Send this email response?')) {
+                // Send response
+                fetch(`/emails/send-response/{{ event.original_email_id }}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}'
+                    },
+                    body: new URLSearchParams({
+                        'template_id': templateId,
+                        'sender_name': '{{ event.point_of_contact_name|escapejs }}',
+                        'event_type': '{{ event.get_type_display|escapejs }}',
+                        'event_date': '{{ event.start_date|date:"F j, Y"|escapejs }}',
+                        'event_time': '{{ event.time|escapejs }}',
+                        'representative_name': '{{ user.get_full_name|default:user.username|escapejs }}'
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            alert('Error sending response: ' + data.error);
+                        } else {
+                            alert('Email response sent successfully!');
+                            bootstrap.Modal.getInstance(document.getElementById('responseModal')).hide();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error sending response');
+                    });
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,45 @@
+{% comment %}A related email's full thread, styled like the EEM email pane.
+
+Each message carries its own "Open in Outlook" link and, when the email is
+attached to events, a "Related events" dropdown that opens the chosen event.{% endcomment %}
+{% if thread_count > 1 %}
+<div class="cdp-email-thread-label">Thread · {{ thread_count }} messages</div>
+{% endif %}
+{% for item in items %}
+<div class="v2-email-item" data-email-id="{{ item.email.id }}">
+    <div class="v2-email-header">
+        <span class="v2-email-from">{{ item.email.sender_name|default:item.email.sender|default:'Unknown' }}</span>
+        <span class="v2-email-header-right">
+            <span class="v2-email-date">{{ item.email.received|date:"M j, Y" }} &middot; {{ item.email.received|time:"g:i A" }}</span>
+            {% if item.events %}
+            <div class="cdp-relevents">
+                <button type="button" class="v2-thread-icon-btn cdp-relevents-btn"
+                        aria-haspopup="true" title="Related events">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    <span class="cdp-relevents-count">{{ item.events|length }}</span>
+                </button>
+                <div class="cdp-relevents-menu" role="menu">
+                    <div class="cdp-relevents-heading">Open related event</div>
+                    {% for ev in item.events %}
+                    <button type="button" class="cdp-relevents-item" role="menuitem"
+                            data-event-id="{{ ev.id }}"
+                            data-href="{% url 'event_management:event_detail' ev.id %}">
+                        <span class="cdp-relevents-title">{{ ev.title|default:'Untitled event' }}</span>
+                        <span class="detail-panel-status status-{{ ev.status|default:'received' }}">{{ ev.get_status_display }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            <button type="button" class="v2-thread-icon-btn v2-email-outlook-btn"
+                    data-action="open-outlook"
+                    data-weblink="{{ item.email.complete_email_data.outlook_metadata.web_link|default:'' }}"
+                    title="Open in Outlook">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            </button>
+        </span>
+    </div>
+    <div class="v2-email-subject">{{ item.email.subject|default:'No Subject' }}</div>
+    <div class="v2-email-body v2-email-body-text" style="white-space: pre-wrap;">{% if item.email.complete_email_data.body.text %}{{ item.email.complete_email_data.body.text }}{% else %}{{ item.email.email_preview|default:'No preview available' }}{% endif %}</div>
+</div>
+{% endfor %}

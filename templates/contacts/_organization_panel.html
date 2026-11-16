@@ -1,0 +1,114 @@
+{% comment %}Detail-panel fragment for one Organization (loaded via AJAX on row click).{% endcomment %}
+<div class="detail-panel-header">
+    <div class="detail-panel-header-left">
+        <div class="cdp-title-row">
+            <span class="cdp-title-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+            <h2 class="detail-panel-title cdp-copy" data-copy="{{ organization.name|default:'' }}" title="Click to copy">{{ organization.name|default:'(no name)' }}</h2>
+        </div>
+        {% if organization.location %}
+        <div class="detail-panel-org">{{ organization.location }}</div>
+        {% endif %}
+    </div>
+    <div class="detail-panel-header-actions">
+        <button type="button" class="detail-panel-close" data-action="deselect" title="Close" aria-label="Close details">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+</div>
+
+<div class="detail-panel-body cdp-body">
+    <div class="cdp-scroll">
+    {% if emails or phones %}
+    <div class="cdp-contact-grid">
+        {% if emails %}
+        <div class="cdp-section">
+            <div class="cdp-label">Email{{ emails|pluralize }}</div>
+            {% for e in emails %}
+            <div class="cdp-value cdp-copy" data-copy="{{ e.email }}" title="Click to copy">{{ e.email }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if phones %}
+        <div class="cdp-section">
+            <div class="cdp-label">Phone{{ phones|pluralize }}</div>
+            {% for p in phones %}
+            <div class="cdp-value cdp-copy" data-copy="{{ p.phone }}" title="Click to copy">{{ p.phone }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if organization.notes %}
+    <div class="cdp-section">
+        <div class="cdp-label">Notes</div>
+        <div class="cdp-notes">{{ organization.notes }}</div>
+    </div>
+    {% endif %}
+
+    <div class="cdp-section">
+        <div class="cdp-label">People <span class="cdp-count">{{ contacts|length }}</span></div>
+        {% if contacts %}
+        <ul class="cdp-list">
+            {% for person in contacts %}
+            <li class="cdp-list-item cdp-record-item" role="button" tabindex="0"
+                data-kind="contact" data-id="{{ person.id }}"
+                aria-label="Edit {{ person.name|default:'contact' }}">
+                <span class="cdp-item-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
+                <span class="cdp-list-title{% if forloop.first %} cdp-list-title--primary{% endif %}">{{ person.name|default:'(no name)' }}</span>
+                <span class="cdp-list-meta">{{ person.primary_email }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="cdp-empty">No people linked.</div>
+        {% endif %}
+    </div>
+
+    <div class="cdp-section">
+        <div class="cdp-label">Linked events <span class="cdp-count">{{ event_links|length }}</span></div>
+        {% if event_links %}
+        <div class="overlap-list">
+            {% for link in upcoming_links %}{% include 'contacts/_event_row.html' %}{% endfor %}
+            {% if past_links %}
+            <div class="cdp-events-divider"><span>Past</span></div>
+            {% for link in past_links %}{% include 'contacts/_event_row.html' %}{% endfor %}
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="cdp-empty">No linked events.</div>
+        {% endif %}
+    </div>
+
+    <div class="cdp-section">
+        <div class="cdp-label">Related emails <span class="cdp-count">{{ related_groups|length }}</span></div>
+        {% if related_groups %}
+        <ul class="cdp-list">
+            {% for grp in related_groups %}
+            <li class="cdp-list-item cdp-email-item" role="button" tabindex="0"
+                data-url="{% url 'contacts:email_popup' grp.rep.id %}"
+                aria-label="Open email: {{ grp.rep.subject|default:'(no subject)' }}">
+                <span class="cdp-item-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M22 7l-10 6L2 7"></path></svg></span>
+                <span class="cdp-list-title">{{ grp.rep.subject|default:'(no subject)' }}</span>
+                {% if grp.count > 1 %}
+                <span class="cdp-thread-badge" title="{{ grp.count }} messages in this thread">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>{{ grp.count }}
+                </span>
+                {% endif %}
+                <span class="cdp-list-meta">{{ grp.rep.sender_name|default:grp.rep.sender }} · {{ grp.rep.received|date:"M j, Y" }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="cdp-empty">No related emails.</div>
+        {% endif %}
+    </div>
+    </div>
+</div>
+
+<div class="detail-panel-footer">
+    <button type="button" class="detail-panel-btn detail-panel-btn-edit" data-action="edit-record" data-kind="organization" data-id="{{ organization.id }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <span class="btn-label">Edit</span>
+    </button>
+</div>

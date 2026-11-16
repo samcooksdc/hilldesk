@@ -1,0 +1,7 @@
+# Ignore custom static files in development
+# Only keep Django admin, extensions, and rest_framework files
+*
+!admin/
+!django_extensions/
+!rest_framework/
+!.gitignore

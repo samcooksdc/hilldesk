@@ -1,0 +1,1137 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * Inbox Redesign CSS
+ * HillDesk Congressional Scheduling Application
+ *
+ * Extends schedule-redesign.css with inbox-specific styles:
+ * - Inline status badges for cards
+ * - Source email section in detail panel
+ * - Routing section styling
+ */
+
+/* =========================================================================
+   Show Past Items Checkbox
+   ========================================================================= */
+
+.inbox-past-items-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.inbox-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.inbox-checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.inbox-checkbox-text {
+    user-select: none;
+}
+
+/* Vertical separator between header controls */
+.inbox-header-separator {
+    width: 1px;
+    height: 20px;
+    background: var(--border-color, #e5e7eb);
+    margin: 0 6px;
+}
+
+/* =========================================================================
+   Resolved/Past Items - Grayed Out State
+   ========================================================================= */
+
+.inbox-card.resolved,
+.inbox-card.resolved.approval-card {
+    /* Resolved rows take a secondary fill so they read as "done" against the
+       bg-primary active rows. Text is not dimmed. */
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    /* Muted grey accent — no pending action. */
+    border-left-color: var(--text-tertiary, #9ca3af) !important;
+    box-shadow: none;
+}
+
+/* Resolved rows fade their text a little to read as "done". */
+.inbox-card.resolved .inbox-row-content {
+    opacity: 0.65;
+}
+
+.inbox-card.resolved:hover {
+    background: var(--bg-secondary);
+    cursor: pointer;
+}
+
+/* Cancelled flow indicator */
+.approval-flow-cancelled {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+/* Sent back indicator in approval flow - inherit text color */
+.inbox-card-approval-flow em {
+    font-size: 0.9em;
+}
+
+/* =========================================================================
+   Inbox Page Layout - Offset for Left Navigation
+   ========================================================================= */
+
+/* Prevent body scroll when on inbox page - only scrollable area should scroll */
+body.inbox-page {
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* Adjust main content for full-height inbox (same as schedule-page) */
+body.inbox-page .main-content {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - var(--header-height, 0px));
+    overflow: hidden;
+    padding-top: 0;
+    margin-top: var(--header-height, 0px);
+    margin-left: var(--sidebar-width, 200px);
+    margin-right: 0;
+    width: calc(100% - var(--sidebar-width, 200px));
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Hide footer on inbox page to maximize space */
+body.inbox-page .footer {
+    display: none;
+}
+
+/* Content wrapper fills available height */
+body.inbox-page .content-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+}
+
+/* Inbox responds to collapsed sidebar */
+body.inbox-page.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed-width, 60px);
+    width: calc(100% - var(--sidebar-collapsed-width, 60px));
+}
+
+/* =========================================================================
+   Inbox Page Specific Styles
+   ========================================================================= */
+
+/* Inbox container - fill available height and manage overflow */
+body.inbox-page .schedule-redesign-container.inbox-container {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* A bit more shadow cast by the left nav onto the content — inbox page only.
+   Uses the existing left-edge shadow strip, which starts at the header's bottom
+   and sits at z-30: under the header (z-40) and the corner spandrel (z-50), so
+   it tucks under the corner piece and never covers the header. */
+body.inbox-page .schedule-below-header::before {
+    width: 10px;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.0275), transparent);
+}
+
+/* Main area fills remaining space */
+body.inbox-page .schedule-main-area {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 60%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* View container is the scrollable area. Rows fill the full width of the panel
+   (no side gutters, no centered max-width) so the queue spans edge to edge. */
+body.inbox-page .schedule-view-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    padding: 0;
+    padding-bottom: var(--spacing-xl, 32px);
+    background: color-mix(in srgb, var(--bg-primary) 70%, var(--bg-secondary));
+}
+
+/* Let rows span the whole space — override the schedule width constraint. */
+body.inbox-page .schedule-view-container > * {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+body.inbox-page #inbox-event-list {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+    background: color-mix(in srgb, var(--bg-primary) 70%, var(--bg-secondary));
+    /* A bit of breathing room above the first date divider. */
+    padding: var(--spacing-sm) 0 0;
+    border-radius: 0;
+    min-height: calc(75% - 16px);
+    margin-bottom: 32px;
+}
+
+
+/* =========================================================================
+   Inbox Card Styles - Base
+   ========================================================================= */
+
+/* Base inbox row — flat, no card chrome. Inbox reads as a worklist queue:
+   horizontal bands on the page background, separated by thin dividers, with a
+   2–3px colored left accent carrying state (the way an unread dot does in email).
+   The card shape is reserved for the Events page. */
+.inbox-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    /* Slightly off-white — midway between bg-primary and bg-secondary — so the
+       selected row (kept at bg-primary) reads brighter than the rest. */
+    background: color-mix(in srgb, var(--bg-primary) 70%, var(--bg-secondary));
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    box-shadow: none;
+    /* Dense rows so ~10–12 items show at once instead of ~5. */
+    padding: 8px var(--spacing-md) 8px 12px;
+    cursor: pointer;
+    transition: background 0.12s ease, border-left-color 0.12s ease,
+                border-left-width 0.12s ease, transform 0.12s ease,
+                box-shadow 0.12s ease;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.inbox-card:hover {
+    background: var(--bg-secondary);
+}
+
+/* =========================================================================
+   Human Review Cards - Yellow Glow (AI extraction needs review)
+   ========================================================================= */
+
+/* Gold left accent is the deliberate "needs human review" indicator for AI
+   extraction rows — intentionally NOT tied to the event's status color. The
+   inset shadow makes the right side of that accent line glow yellow. */
+.inbox-card.human-review-card {
+    border-left-color: #eab308;
+    box-shadow: inset 5px 0 6px -4px rgba(234, 179, 8, 0.15);
+}
+
+/* Human-review active row keeps the gold accent + faint glow, plus the lift shadow. */
+.inbox-card.human-review-card.detail-active {
+    border-left-color: #eab308;
+    box-shadow: inset 5px 0 6px -4px rgba(234, 179, 8, 0.2),
+                0 4px 16px rgba(0, 0, 0, 0.18), 0 0 6px rgba(0, 0, 0, 0.08);
+}
+
+/* =========================================================================
+   Extraction Badge - Small inline pill matching detail-panel-status
+   ========================================================================= */
+
+.detail-panel-status.status-extraction {
+    color: #b45309;
+    background: rgba(234, 179, 8, 0.1);
+    border-color: #b45309;
+}
+
+/* Inline received date on card meta line */
+.inbox-card-received-inline {
+    color: var(--text-tertiary, #9ca3af);
+}
+
+/* =========================================================================
+   Left-accent colors
+   - Routing/approval rows (non-resolved): accent color
+   - Human review rows: yellow (set on .human-review-card)
+   - Resolved rows: grey (set with !important on .resolved)
+   ========================================================================= */
+
+/* Non-resolved routing rows all use the accent color — the per-status colors
+   no longer drive the left bar. Resolved is excluded so its grey accent stays. */
+.inbox-card.approval-card:not(.resolved) {
+    border-left-style: solid;
+    border-left-color: var(--accent-color);
+}
+
+/* =========================================================================
+   Inbox Row Layout — action-led worklist
+   Headline: bold verb + lighter subject. Meta: smallest grey tertiary line.
+   One badge sits right-aligned.
+   ========================================================================= */
+
+.inbox-row-content {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Headline: verb + event + org on one line, truncated with ellipsis. */
+.inbox-row-headline {
+    font-size: var(--font-size-base);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The action verb is the primary, bold text the row leads with. */
+.inbox-row-verb {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Event name follows the verb as lighter secondary text. */
+.inbox-row-subject {
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-left: 6px;
+}
+
+/* Organization is the lightest part of the subject. */
+.inbox-row-org {
+    color: var(--text-tertiary, #9ca3af);
+}
+
+/* Meta line (date · time · received · context) — smallest grey tertiary text. */
+.inbox-row-meta {
+    margin-top: 2px;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary, #9ca3af);
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Compact approval context folded into the meta line. */
+.inbox-row-context {
+    color: var(--text-tertiary, #9ca3af);
+}
+
+/* Single right-aligned badge per row. */
+.inbox-row-badge {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Tags */
+.inbox-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+}
+
+.inbox-card-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: transparent;
+    border: 1px solid var(--text-secondary);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* =========================================================================
+   Needs Human Review Badge
+   ========================================================================= */
+
+.inbox-review-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(180, 83, 9, 0.12);
+    border: 1px solid rgba(180, 83, 9, 0.6);
+    border-radius: var(--radius-full);
+    color: #92400e;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Badge icon */
+.inbox-review-badge svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* =========================================================================
+   Inbox Badge Styles
+   ========================================================================= */
+
+/* Badge container - horizontal layout with status on left */
+.inbox-card-badges {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Approval badge - accent color */
+.inbox-approval-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--accent-lighter, rgba(99, 102, 241, 0.08));
+    border: 1px solid var(--accent-color, #6366f1);
+    border-radius: var(--radius-full);
+    color: var(--accent-color, #6366f1);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.inbox-approval-badge svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* Requires Your Review badge - accent color, no glow */
+.inbox-requires-review-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--accent-color-light);
+    border: 1px solid var(--accent-color);
+    border-radius: var(--radius-full);
+    color: var(--accent-color);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.inbox-requires-review-badge svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* Resolved badges - gray styling for past items */
+.inbox-resolved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(156, 163, 175, 0.1);
+    border: 1px solid #9ca3af;
+    border-radius: var(--radius-full);
+    color: #6b7280;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.inbox-resolved-badge svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* Accepted badge - green tint */
+.inbox-accepted-badge {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: #22c55e;
+    color: #16a34a;
+}
+
+/* Sent Back badge - orange tint */
+.inbox-sent-back-badge {
+    background: rgba(249, 115, 22, 0.1);
+    border-color: #f97316;
+    color: #ea580c;
+}
+
+/* Cancelled/Stopped badge - red tint */
+.inbox-cancelled-badge {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #dc2626;
+}
+
+/* Resolved review badge for human review items */
+.inbox-review-badge.resolved-badge {
+    background: rgba(156, 163, 175, 0.1);
+    border-color: #9ca3af;
+    color: #6b7280;
+}
+
+/* Broken line in approval flow (for sent back items) */
+.approval-flow-broken {
+    color: #9ca3af;
+    letter-spacing: 2px;
+    opacity: 0.6;
+}
+
+/* Status label */
+.inbox-status-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    margin-right: 6px;
+    white-space: nowrap;
+}
+
+/* Status badge - white background, colored border and text */
+.inbox-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: white;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Inbox status pill badge colors — fallbacks aligned with office defaults. */
+.inbox-status-badge.status-received {
+    color: var(--status-received, #3b82f6);
+}
+
+.inbox-status-badge.status-hold {
+    color: var(--status-hold, #f59e0b);
+}
+
+.inbox-status-badge.status-referred {
+    color: var(--status-referred, #8b5cf6);
+}
+
+.inbox-status-badge.status-fyied {
+    color: var(--status-fyied, #f97316);
+}
+
+.inbox-status-badge.status-scheduling_in_progress {
+    color: var(--status-scheduling_in_progress, #14b8a6);
+}
+
+.inbox-status-badge.status-scheduled {
+    color: var(--status-scheduled, #10b981);
+}
+
+.inbox-status-badge.status-rsvped {
+    color: var(--status-rsvped, #06b6d4);
+}
+
+.inbox-status-badge.status-regrets_sent {
+    color: var(--status-regrets_sent, #ef4444);
+}
+
+.inbox-status-badge.status-ignored {
+    color: var(--status-ignored, #64748b);
+}
+
+/* Canceled - Red */
+.inbox-status-badge.status-canceled {
+    color: var(--status-canceled, #ef4444);
+}
+
+/* Needs HMS Review - Amber */
+.inbox-status-badge.status-requires_hms_review {
+    color: var(--status-requires_hms_review, #eab308);
+}
+
+/* =========================================================================
+   Date Headers for Inbox (Received Date)
+   ========================================================================= */
+
+.inbox-date-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    /* Left padding aligns header text with the row text below it. */
+    padding: var(--spacing-xs) var(--spacing-md) var(--spacing-xs) 15px;
+    margin-top: 6px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.inbox-date-header:first-child {
+    margin-top: 0;
+}
+
+.inbox-date-header .date-label {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.inbox-date-header .day-label {
+    font-size: var(--font-size-base);
+    font-weight: 400;
+    color: var(--text-tertiary, #9ca3af);
+}
+
+/* Today header - accent color */
+.inbox-date-header.today {
+    border-bottom-color: var(--accent-color);
+}
+
+.inbox-date-header.today .date-label {
+    color: var(--accent-color);
+}
+
+/* Yesterday header */
+.inbox-date-header.yesterday {
+    border-bottom-color: var(--border-color);
+}
+
+.inbox-date-header.yesterday .date-label {
+    color: var(--text-primary);
+}
+
+/* Section Headers (for "Unknown Date", etc.) */
+.inbox-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-xs);
+    margin-top: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.inbox-section-header .section-label {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Dark mode adjustments for cards */
+@media (prefers-color-scheme: dark) {
+    .inbox-card.resolved {
+        background: var(--bg-tertiary, #1f2937);
+    }
+}
+
+/* =========================================================================
+   Inbox Cards Container
+   ========================================================================= */
+
+.inbox-cards-container {
+    display: flex;
+    flex-direction: column;
+    /* Rows butt against one another; the per-row bottom divider is the only
+       separator, so the list reads as a continuous queue. */
+    gap: 0;
+}
+
+.inbox-cards-container.with-date-headers {
+    gap: 0;
+}
+
+/* =========================================================================
+   Empty State for Inbox - Simple text when no events
+   ========================================================================= */
+
+.inbox-empty-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--spacing-lg);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    flex: 1;
+    min-height: 200px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Hide icon and extra messages */
+.inbox-empty-state .icon,
+.inbox-empty-state .hint,
+.inbox-empty-state h3,
+.inbox-empty-state h5,
+.inbox-empty-state p:not(.message),
+.inbox-empty-state svg,
+.inbox-empty-state i {
+    display: none !important;
+}
+
+/* Show only the message text */
+.inbox-empty-state .message {
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin: 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+/* =========================================================================
+   Responsive Adjustments
+   ========================================================================= */
+
+@media (max-width: 768px) {
+    /* Inbox responds to collapsed sidebar on mobile */
+    body.inbox-page .main-content,
+    body.inbox-page.sidebar-collapsed .main-content {
+        margin-left: var(--sidebar-collapsed-width, 60px);
+        width: calc(100% - var(--sidebar-collapsed-width, 60px));
+    }
+
+    /* Keep the row horizontal on mobile; just tighten the badge. */
+    .inbox-row-badge {
+        align-self: center;
+    }
+
+    .inbox-review-badge,
+    .inbox-approval-badge,
+    .inbox-requires-review-badge,
+    .inbox-resolved-badge,
+    .inbox-status-badge {
+        padding: 3px 8px;
+        font-size: 10px;
+    }
+
+    .inbox-review-badge svg,
+    .inbox-approval-badge svg,
+    .inbox-requires-review-badge svg,
+    .inbox-resolved-badge svg {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+/* =========================================================================
+   Empty Inbox State
+   ========================================================================= */
+
+.inbox-empty-message {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--text-secondary, #64748b);
+    font-size: 15px;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* =========================================================================
+   Detail Panel: Active Card Highlight
+   Skips left side to preserve status color bar.
+   ========================================================================= */
+
+/* Active row — the detail panel is unchanged, so the selected row carries the
+   load. The colored left bar grows and pushes the content over (the vacated
+   left area reads as the accent color), the row lifts up a little, and a soft
+   shadow wraps the whole item — no color change. */
+.inbox-card.detail-active,
+.inbox-card.detail-active:hover {
+    background: var(--bg-primary);
+    transform: translateY(-2px);
+    border-left-width: 6px;
+    outline: 1px solid rgba(107, 114, 128, 0.45);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 0 6px rgba(0, 0, 0, 0.08);
+    z-index: 1;
+}
+
+/* A selected resolved row brightens to bg-primary (overriding its bg-secondary
+   fill) but keeps its dimmed text. */
+.inbox-card.resolved.approval-card.detail-active,
+.inbox-card.resolved.approval-card.detail-active:hover {
+    background: var(--bg-primary);
+}
+
+
+
+/* =========================================================================
+   Detail Panel: Routing Section (between header and body)
+   ========================================================================= */
+
+.inbox-detail-routing {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 60px;
+    padding: 12px 20px;
+    background: transparent;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.routing-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: none;
+    color: var(--text-tertiary, #9ca3af);
+    margin-bottom: 8px;
+}
+
+.routing-flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.routing-node {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    background: white;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-full, 9999px);
+    font-size: var(--font-size-sm, 13px);
+    font-weight: 500;
+    color: var(--text-primary, #1f2937);
+    white-space: nowrap;
+}
+
+.routing-node.routing-you {
+    background: var(--accent-color-light, rgba(99, 102, 241, 0.08));
+    border-color: var(--accent-color, #6366f1);
+    color: var(--accent-color, #6366f1);
+    font-weight: 600;
+}
+
+.routing-node.routing-ai {
+    background: rgba(234, 179, 8, 0.1);
+    border-color: rgba(234, 179, 8, 0.5);
+    color: #92400e;
+    font-weight: 500;
+}
+
+.routing-arrow {
+    color: var(--text-tertiary, #9ca3af);
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* Terminal marker shown after the YOU pill when you are the last stop.
+   Sits in the same slot an arrow would occupy. */
+.routing-end {
+    flex-shrink: 0;
+    width: 1px;
+    height: 18px;
+    border-radius: 1px;
+    background: var(--text-tertiary, #9ca3af);
+}
+
+/* =========================================================================
+   Detail Panel: Review Button
+   ========================================================================= */
+
+/* =========================================================================
+   Source Email Section
+   ========================================================================= */
+
+.source-email-content {
+    margin-top: 6px;
+    padding: 12px;
+    background: var(--bg-secondary, #f9fafb);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-md, 6px);
+    font-size: var(--font-size-sm, 13px);
+    /* Natural height — the email pane no longer shrinks/scrolls on its own;
+       the whole panel body scrolls instead (see .detail-panel-body). */
+}
+
+.source-email-subject {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+/* Sender · received date on one line, same gray as the body text. */
+.source-email-meta {
+    font-size: 12px;
+    color: var(--text-secondary, #64748b);
+}
+
+.source-email-body {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    white-space: pre-wrap;
+    color: var(--text-secondary, #64748b);
+}
+
+/* Text the AI used as an extraction source — highlighted in yellow so
+   reviewers can see at a glance which parts of the email fed the extracted
+   event fields. box-decoration-break keeps the tint/rounding intact when a
+   highlighted phrase wraps across lines. */
+.source-email-body mark.extraction-source {
+    background: rgba(250, 204, 21, 0.31);
+    color: var(--text-primary, #1e293b);
+    border-radius: 3px;
+    padding: 0.5px 2px;
+    box-shadow: inset 0 -1px 0 rgba(202, 138, 4, 0.38);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+/* =========================================================================
+   Detail Panel: Review Button
+   ========================================================================= */
+
+.detail-panel-btn-review {
+    flex: 1;
+    background: var(--accent-color, #6366f1);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md, 8px);
+    padding: 10px 16px;
+    font-size: var(--font-size-sm, 13px);
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s ease;
+}
+
+.detail-panel-btn-review:hover {
+    background: var(--accent-hover, #4f46e5);
+}
+
+/* Extraction (human-review) variant: matches the warning-orange of the
+   Jump to Next button in the editing modal. */
+.detail-panel-btn-review--extraction {
+    background: #eab308;
+}
+
+.detail-panel-btn-review--extraction:hover {
+    background: #ca8a04;
+}
+
+.detail-panel-btn-review svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Bold modifier for the human-review footer buttons (Dismiss / Restore).
+   They keep the white ghost styling; only the label weight is heavier. */
+.detail-panel-btn-bold {
+    font-weight: 700;
+}
+
+/* =============================================================================
+   Email-ingestion change-request cards (third inbox feed)
+   Violet left accent — distinct from the gold "needs review" and the
+   accent-colored approval rows.
+   ============================================================================= */
+.inbox-card.change-request-card {
+    border-left-color: #8b5cf6;
+    box-shadow: inset 5px 0 6px -4px rgba(139, 92, 246, 0.18);
+}
+
+.inbox-card.change-request-card.detail-active {
+    border-left-color: #8b5cf6;
+    box-shadow: inset 5px 0 6px -4px rgba(139, 92, 246, 0.25),
+                0 4px 16px rgba(0, 0, 0, 0.18), 0 0 6px rgba(0, 0, 0, 0.08);
+}
+
+.detail-panel-status.status-change-request {
+    color: #6d28d9;
+    background: rgba(139, 92, 246, 0.12);
+}
+
+/* =============================================================================
+   "Needs a decision" cards (fourth inbox feed): emails the pipeline set aside
+   instead of acting on. Same structure as the change-request card, with the
+   theme's error color as the accent so they never read as routine reviews.
+   ============================================================================= */
+.inbox-card.decision-card {
+    border-left-color: var(--error-color, #ef4444);
+    box-shadow: inset 5px 0 6px -4px rgba(239, 68, 68, 0.18);
+}
+
+.inbox-card.decision-card.detail-active {
+    border-left-color: var(--error-color, #ef4444);
+    box-shadow: inset 5px 0 6px -4px rgba(239, 68, 68, 0.25),
+                0 4px 16px rgba(0, 0, 0, 0.18), 0 0 6px rgba(0, 0, 0, 0.08);
+}
+
+.detail-panel-status.status-needs-decision {
+    color: #b91c1c;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #b91c1c;
+}
+
+/* Same attention glow as "Needs Human Review", in red */
+.inbox-row-badge .status-needs-decision {
+    box-shadow: 0 0 7px 0px rgba(239, 68, 68, 0.55);
+}
+
+/* Field-level diff rows (old → proposed) on the card's meta line */
+.cr-diff-row {
+    white-space: nowrap;
+}
+
+.cr-diff-field {
+    color: var(--text-tertiary, #6b7280);
+}
+
+.cr-diff-old {
+    text-decoration: line-through;
+    opacity: 0.65;
+}
+
+.cr-diff-arrow {
+    margin: 0 4px;
+    color: #8b5cf6;
+    font-weight: 700;
+}
+
+.cr-diff-new {
+    font-weight: 600;
+}
+
+/* Apply / Reject buttons on the row */
+.cr-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cr-action-btn {
+    border: 1px solid var(--border-color, #d1d5db);
+    background: transparent;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    color: inherit;
+}
+
+.cr-action-btn.cr-review-btn {
+    border-color: #8b5cf6;
+    color: #6d28d9;
+    font-weight: 600;
+}
+
+.cr-action-btn.cr-review-btn:hover {
+    background: rgba(139, 92, 246, 0.12);
+}
+
+.cr-action-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Ingestion meta chips on human-review rows (intent / duplicate / channel) */
+.ingestion-chip {
+    display: inline-block;
+    padding: 0 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    line-height: 16px;
+    background: rgba(156, 163, 175, 0.15);
+    color: var(--text-secondary, #4b5563);
+    white-space: nowrap;
+}
+
+.ingestion-chip-duplicate {
+    background: rgba(234, 179, 8, 0.15);
+    color: #b45309;
+    font-weight: 600;
+}
+
+.ingestion-chip-recurring {
+    background: rgba(139, 92, 246, 0.12);
+    color: #6d28d9;
+}
+
+/* =============================================================================
+   Inbox / Diverted segmented toggle — identical to the Contacts page's
+   People / Organizations control (contacts-redesign.css).
+   ============================================================================= */
+.contacts-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    background: var(--bg-secondary, #f1f5f9);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-full, 9999px);
+    flex-shrink: 0;
+}
+
+.contacts-tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 14px;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-full, 9999px);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.contacts-tab:hover {
+    color: var(--text-primary);
+}
+
+.contacts-tab.active {
+    background: var(--bg-primary, #fff);
+    color: var(--accent-color);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.contacts-tab:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: -2px;
+}
+
+@media (max-width: 768px) {
+    .contacts-tabs {
+        order: 3;
+    }
+}
+
+/* Inbox-only header controls are hidden on the Diverted tab. */
+.inbox-container.view-diverted [data-inbox-only] {
+    display: none !important;
+}
+
+/* Diverted rows: neutral pill, default left accent (filtered mail, no action owed). */
+.detail-panel-status.status-diverted {
+    color: var(--text-secondary);
+    background: var(--bg-secondary, #f1f5f9);
+    border-color: var(--border-color, #cbd5e1);
+}

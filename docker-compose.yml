@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Local demo: `docker compose up`, then open http://localhost:8000
+# and sign in as  samuel / demo.
+#
+# Runs development settings (SQLite, mock AI provider, eager Celery), so no
+# Postgres, Redis or cloud account is needed. The database lives in a named
+# volume; `docker compose down -v` resets it. NOT a production configuration.
+
+services:
+  demo:
+    build: .
+    image: hilldesk:local
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+      LLM_PROVIDER: mock
+      DEMO_DB_DIR: /data
+      PYTHONIOENCODING: utf-8
+    command: >
+      sh -c "python manage.py bootstrap_demo &&
+             python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - demo-data:/data
+
+volumes:
+  demo-data:

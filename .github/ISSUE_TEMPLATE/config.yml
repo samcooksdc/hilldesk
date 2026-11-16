@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/samcooksdc/hilldesk/security/advisories/new
+    about: Please report vulnerabilities privately, not as an issue.
+  - name: Questions and setup discussion
+    url: https://github.com/samcooksdc/hilldesk/discussions
+    about: Ask questions here. Note that the maintainer doesn't provide deployment help (see SUPPORT.md).

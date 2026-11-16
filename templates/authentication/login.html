@@ -1,0 +1,183 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In · HillDesk</title>
+<link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+{% load static %}<link href="{% static 'css/fonts.css' %}" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0c1b33;
+    --navy-mid: #162a4a;
+    --gold: #c9a84c;
+    --gold-muted: #b8943f;
+    --cream: #f8f6f1;
+    --white: #ffffff;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--sans);
+    background: var(--navy);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .login-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 48px 40px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.3);
+    text-align: center;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-icon img { width: 32px; height: 32px; border-radius: 8px; display: block; }
+  .logo-text {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .subtitle {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 32px;
+  }
+  form { text-align: left; }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+  input[type="text"],
+  input[type="password"] {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: var(--sans);
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus,
+  input[type="password"]:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.15);
+  }
+  .field { margin-bottom: 16px; }
+  .form-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  .field-error {
+    color: #dc2626;
+    font-size: 12px;
+    margin-top: 6px;
+  }
+  button {
+    width: 100%;
+    margin-top: 20px;
+    padding: 13px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: var(--sans);
+    color: var(--navy);
+    background: var(--gold);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  button:hover {
+    background: var(--gold-muted);
+    transform: translateY(-1px);
+  }
+  .back-link {
+    display: block;
+    margin-top: 24px;
+    font-size: 13px;
+    color: #64748b;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: var(--navy); }
+</style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="logo">
+    <div class="logo-icon">
+      <img src="{% static 'images/hd-icon-new.png' %}" alt="HillDesk">
+    </div>
+    <span class="logo-text">HillDesk</span>
+  </div>
+  <p class="subtitle">Congressional Scheduling Software</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    {% if form.non_field_errors %}
+      <div class="form-error">
+        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="field">
+      <label for="id_username">Username</label>
+      <input type="text" id="id_username" name="username"
+             value="{{ form.username.value|default:'' }}"
+             placeholder="Enter your username" autofocus
+             autocapitalize="none" autocomplete="username">
+      {% if form.username.errors %}
+        <div class="field-error">{{ form.username.errors|striptags }}</div>
+      {% endif %}
+    </div>
+
+    <div class="field">
+      <label for="id_password">Password</label>
+      <input type="password" id="id_password" name="password"
+             placeholder="Enter your password" autocomplete="current-password">
+      {% if form.password.errors %}
+        <div class="field-error">{{ form.password.errors|striptags }}</div>
+      {% endif %}
+    </div>
+
+    <button type="submit">Log In</button>
+  </form>
+
+  <a href="https://hilldesk.app" class="back-link">&larr; Back to HillDesk.app</a>
+</div>
+
+</body>
+</html>

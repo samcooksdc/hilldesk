@@ -1,0 +1,2648 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/**
+ * Calendar Redesign Stylesheet
+ * HillDesk Congressional Scheduling Application
+ *
+ * Provides styling for the redesigned calendar view with:
+ * - Two-panel layout (filter sidebar + calendar)
+ * - Four view modes (Day, Week, Month, Schedule)
+ * - Status-first event display
+ * - Outlook-style side-by-side overlapping events
+ */
+
+/* =============================================================================
+   CSS Custom Properties (extending themes.css)
+   ============================================================================= */
+:root {
+    /* Calendar-specific sizing */
+    --calendar-sidebar-width: 220px;
+    --calendar-header-height: 60px;
+    --calendar-time-column-width: 60px;
+    --calendar-hour-height: 60px;
+
+    /* Subtle grey used for the page backdrop AND the time column, so the page
+       reads as that colour while the grid loads and the time axis blends in. */
+    --calendar-surface: color-mix(in srgb, var(--bg-secondary) 45%, var(--bg-primary));
+
+    /* Status colors - defaults (overridden by office-specific colors in base.html).
+       Kept aligned with config/settings/base.py DEFAULT_EVENT_STATUS_CHOICES. */
+    --status-received: #3b82f6;
+    --status-received-bg: #dbeafe;
+    --status-hold: #f59e0b;
+    --status-hold-bg: #fef3c7;
+    --status-referred: #8b5cf6;
+    --status-referred-bg: #ede9fe;
+    --status-fyied: #f97316;
+    --status-fyied-bg: #ffedd5;
+    --status-scheduling_in_progress: #14b8a6;
+    --status-scheduling_in_progress-bg: #ccfbf1;
+    --status-scheduled: #10b981;
+    --status-scheduled-bg: #d1fae5;
+    --status-rsvped: #06b6d4;
+    --status-rsvped-bg: #cffafe;
+    --status-regrets_sent: #ef4444;
+    --status-regrets_sent-bg: #fee2e2;
+    --status-ignored: #64748b;
+    --status-ignored-bg: #f1f5f9;
+    --status-passed: #6b7280;
+    --status-passed-bg: #f3f4f6;
+    --status-canceled: #6b7280;
+    --status-canceled-bg: #f3f4f6;
+    --status-requires_hms_review: #eab308;
+    --status-requires_hms_review-bg: #fef9c3;
+}
+
+/* Dark mode overrides */
+[data-theme="dark"] {
+    --status-received-bg: #2b5ea0;
+    --status-hold-bg: #451a03;
+    --status-referred-bg: #2e1065;
+    --status-fyied-bg: #431407;
+    --status-scheduling_in_progress-bg: #052e16;
+    --status-scheduled-bg: #022c22;
+    --status-rsvped-bg: #083344;
+    --status-regrets_sent-bg: #450a0a;
+    --status-passed-bg: #1f2937;
+    --status-canceled-bg: #111827;
+    --status-requires_hms_review-bg: #422006;
+}
+
+/* =============================================================================
+   Calendar Page Layout Overrides
+   ============================================================================= */
+
+/* The page itself is the subtle calendar surface, so the whole view reads as
+   that colour before the grid/content finishes loading. */
+body.calendar-page {
+    background: var(--calendar-surface);
+}
+
+/* Hide footer on calendar page */
+body.calendar-page .footer {
+    display: none;
+}
+
+/* Remove padding from content wrapper on calendar page */
+body.calendar-page .content-wrapper {
+    padding: 0;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+}
+
+/* Adjust main content for full-height calendar */
+body.calendar-page .main-content {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--header-height, 0px));
+    padding-top: 0;
+    margin-top: var(--header-height, 0px);
+    margin-left: var(--sidebar-width, 200px);
+    margin-right: 0;
+    width: calc(100% - var(--sidebar-width, 200px));
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Calendar responds to collapsed sidebar */
+body.calendar-page.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed-width, 60px);
+    width: calc(100% - var(--sidebar-collapsed-width, 60px));
+}
+
+/* Calendar responds to collapsed sidebar on mobile */
+@media (max-width: 768px) {
+    body.calendar-page .main-content,
+    body.calendar-page.sidebar-collapsed .main-content {
+        margin-left: var(--sidebar-collapsed-width, 60px);
+        width: calc(100% - var(--sidebar-collapsed-width, 60px));
+    }
+}
+
+/* =============================================================================
+   Main Layout Container
+   ============================================================================= */
+.calendar-redesign-container {
+    display: flex;
+    gap: 0;
+    background: var(--calendar-surface);
+    overflow: hidden;
+    flex: 1;
+    height: calc(100vh - var(--header-height, 0px));
+    /* Prevent text selection on entire calendar */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* =============================================================================
+   Filter Sidebar (Left Panel - compresses page)
+   ============================================================================= */
+.calendar-filter-sidebar {
+    width: 0;
+    min-width: 0;
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.3s ease, min-width 0.3s ease;
+    flex-shrink: 0;
+    order: -1;
+}
+
+.calendar-filter-sidebar.open {
+    width: var(--calendar-sidebar-width);
+    min-width: var(--calendar-sidebar-width);
+    border-right: 1px solid var(--border-color);
+}
+
+.calendar-filter-sidebar.collapsed {
+    width: 0;
+    min-width: 0;
+}
+
+.sidebar-header {
+    padding: var(--spacing-md) var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sidebar-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-sm);
+    padding-bottom: 16px;
+}
+
+/* Filter Accordion Sections */
+.filter-section {
+    margin-bottom: var(--spacing-xs);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+.filter-section.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    cursor: pointer;
+    user-select: none;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: background 0.2s ease;
+}
+
+.filter-header:hover {
+    background: var(--bg-secondary);
+}
+
+.filter-header .chevron {
+    transition: transform 0.2s ease;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.filter-section.collapsed .filter-header .chevron {
+    transform: rotate(-90deg);
+}
+
+.filter-content {
+    padding: var(--spacing-sm) var(--spacing-md);
+    max-height: 200px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.filter-section.collapsed .filter-content {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+}
+
+/* Filter Checkboxes */
+.filter-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.filter-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.filter-checkbox-item input[type="checkbox"],
+.filter-checkbox-item input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+.filter-checkbox-item label {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.filter-checkbox-item .count {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+/* Select All Option */
+.filter-checkbox-item.select-all-item {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+}
+
+.filter-checkbox-item.select-all-item label {
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* Coming Soon Badge */
+.coming-soon {
+    display: inline-block;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    font-style: italic;
+    padding: var(--spacing-sm);
+}
+
+/* Clear All Button */
+.clear-all-btn {
+    display: block;
+    width: calc(100% - var(--spacing-sm) * 2);
+    margin: var(--spacing-md) var(--spacing-sm);
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clear-all-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+/* =============================================================================
+   Calendar Main Area (Right Panel)
+   ============================================================================= */
+.calendar-main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-primary);
+    max-width: 100%;
+    position: relative; /* Containing block for mini-cal popover */
+}
+
+/* =============================================================================
+   Calendar Header Bar
+   ============================================================================= */
+.calendar-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: var(--spacing-md) var(--spacing-lg);
+    padding-top: calc(var(--spacing-md) + 16px);
+    background: var(--bg-primary);
+    border-bottom: none;
+    min-height: 60px;
+    gap: var(--spacing-md);
+    flex-wrap: nowrap;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    position: relative;
+    z-index: 40;
+    flex-shrink: 0;
+}
+
+/* Inverse border radius — concave quarter-circle at the inner corner
+   where the sidebar's right edge meets the header's bottom edge.
+   Shadow is clipped so it blends seamlessly with the sidebar shadow. */
+.calendar-header-bar::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    background: radial-gradient(circle at 100% 100%, transparent 12px, var(--bg-primary, #ffffff) 12px);
+    filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.06));
+    pointer-events: none;
+    z-index: 50;
+}
+
+/* Filters Toggle Button (on the right side of header) */
+.filters-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.filters-toggle-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* Filters button active state - glow when filters are active */
+.filters-toggle-btn.has-filters {
+    background: color-mix(in srgb, var(--accent-color) 15%, var(--bg-primary));
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent-color) 40%, transparent);
+}
+
+.filters-toggle-btn.has-filters:hover {
+    background: color-mix(in srgb, var(--accent-color) 25%, var(--bg-primary));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color) 50%, transparent);
+}
+
+.filters-toggle-btn .filters-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.filters-toggle-btn .filters-text {
+    white-space: nowrap;
+}
+
+/* Filters button is always visible */
+
+/* Calendar Header Right Group — wraps nav, view toggle, and filters */
+.calendar-header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-left: auto;
+}
+
+.calendar-header-right > *:not(:last-child) {
+    padding-right: var(--spacing-sm);
+    border-right: 1px solid var(--border-color);
+}
+
+/* Navigation Controls */
+.nav-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.nav-btn.today {
+    width: auto;
+    padding: 0 var(--spacing-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Calendar Page Title */
+.calendar-page-title {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    flex-shrink: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Separator dot between Calendar and date */
+.calendar-page-title .title-separator {
+    font-weight: 400;
+    font-size: 1rem;
+    color: var(--text-tertiary, #9ca3af);
+}
+
+/* Period Label - dropdown button that opens mini calendar popover */
+.calendar-page-title .period-label {
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--text-primary, #1f2937);
+    white-space: nowrap;
+}
+
+#period-label-btn {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: var(--radius-md);
+    padding: 4px 10px;
+    margin: -4px -10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    transition: all 0.15s ease;
+}
+
+#period-label-btn:hover {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    background: var(--accent-color-light, rgba(43, 94, 160, 0.06));
+}
+
+.period-chevron {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    opacity: 0.5;
+    transition: transform 0.2s ease, opacity 0.15s ease;
+}
+
+#period-label-btn:hover .period-chevron {
+    opacity: 0.8;
+}
+
+#period-label-btn.popover-open .period-chevron {
+    transform: rotate(180deg);
+    opacity: 0.8;
+}
+
+#period-label-btn.popover-open {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    background: var(--accent-color-light, rgba(43, 94, 160, 0.06));
+}
+
+/* View Toggle */
+.view-toggle {
+    display: flex;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    gap: 2px;
+}
+
+.view-toggle-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-toggle-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.view-toggle-btn.active {
+    background: var(--bg-primary);
+    color: var(--accent-color);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Mobile Sidebar Toggle - Hidden */
+.mobile-sidebar-toggle {
+    display: none !important;
+}
+
+/* =============================================================================
+   Mini Calendar Popover (anchored to header period label)
+   ============================================================================= */
+.mini-cal-popover {
+    display: none;
+    position: absolute;
+    z-index: 100;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    padding: var(--spacing-md, 12px);
+    width: 260px;
+    /* top/left set dynamically by JS to appear directly under the period label */
+}
+
+.mini-cal-popover.visible {
+    display: block;
+}
+
+/* =============================================================================
+   Calendar View Container
+   ============================================================================= */
+.calendar-view-container {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg-primary);
+    /* Inset shadows on top and sides for depth */
+    box-shadow: inset 0 4px 6px -4px rgba(0, 0, 0, 0.08),
+                inset 4px 0 6px -4px rgba(0, 0, 0, 0.06),
+                inset -4px 0 6px -4px rgba(0, 0, 0, 0.06);
+}
+
+.calendar-view {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-view.hidden {
+    display: none;
+}
+
+/* Only agenda view needs scroll on the view itself */
+#agendaView {
+    overflow: auto;
+}
+
+/* =============================================================================
+   Week View
+   ============================================================================= */
+
+/* Sticky Header Row */
+.week-header-row {
+    display: grid;
+    grid-template-columns: var(--calendar-time-column-width) repeat(7, minmax(0, 1fr));
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    z-index: 10;
+    /* Account for scrollbar width in the body below */
+    padding-right: var(--scrollbar-width, 17px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    /* Prevent text selection */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* When all-day section is present, remove shadow from header */
+.week-header-row.has-allday-section {
+    box-shadow: none;
+}
+
+.time-gutter-header {
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border-color);
+}
+
+.week-header-row .day-column-header {
+    background: var(--bg-primary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    text-align: center;
+    border-right: 1px solid var(--border-color);
+}
+
+.week-header-row .day-column-header:last-child {
+    border-right: none;
+}
+
+/* Day header styling */
+.day-column-header .day-name {
+    display: block;
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.day-column-header .day-number {
+    display: block;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 2px;
+}
+
+/* Day column header hover effect - clickable buttons */
+.day-column-header {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.day-column-header:hover {
+    background: var(--bg-tertiary);
+}
+
+.day-column-header.today {
+    background: color-mix(in srgb, var(--accent-color) 8%, var(--bg-secondary));
+}
+
+.day-column-header.today:hover {
+    background: color-mix(in srgb, var(--accent-color) 14%, var(--bg-secondary));
+}
+
+.day-column-header.today .day-name {
+    color: var(--accent-color);
+}
+
+.day-column-header.today .day-number {
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+/* =============================================================================
+   All-Day / Multi-Day Events Section
+   ============================================================================= */
+.week-allday-section,
+.day-allday-section {
+    display: grid;
+    /* Grid matches header columns - includes scrollbar padding for alignment */
+    grid-template-columns: var(--calendar-time-column-width) repeat(7, minmax(0, 1fr));
+    padding-right: var(--scrollbar-width, 17px);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    min-height: 34px;
+    max-height: 120px;
+    overflow: hidden; /* Never show scrollbars */
+    flex-shrink: 0;
+    z-index: 9;
+    /* Shadow moves here when all-day section is present */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.day-allday-section {
+    /* Day view only has 1 column for events */
+    grid-template-columns: var(--calendar-time-column-width) 1fr;
+}
+
+.allday-gutter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border-color);
+    gap: 2px;
+}
+
+.allday-label {
+    text-transform: uppercase;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* Hide label when section is compact (single row) */
+.week-allday-section.compact .allday-label {
+    display: none;
+}
+
+/* Collapse toggle button */
+.allday-collapse-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
+}
+
+.allday-collapse-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Expand tab that appears when all-day section is collapsed */
+/* This is an absolutely positioned floating tab, not in document flow */
+/* Positioned dynamically via JS to appear at bottom of all-day section */
+.allday-expand-tab {
+    display: none;
+    position: absolute;
+    left: 0;
+    width: var(--calendar-time-column-width);
+    height: 20px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 10px;
+    transition: all 0.15s ease;
+    z-index: 15;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.allday-expand-tab:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Show expand tab when calendar view has allday-collapsed class */
+.calendar-view.allday-collapsed .allday-expand-tab {
+    display: flex;
+}
+
+/* Collapsed state - hide the all-day section */
+.week-allday-section.collapsed,
+.day-allday-section.collapsed {
+    display: none;
+}
+
+.allday-events-grid {
+    /* Span all 7 day columns */
+    grid-column: 2 / -1;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: 22px;
+    gap: 2px 0;
+    padding: 4px 0;
+    align-content: start;
+    position: relative;
+}
+
+/* Vertical divider lines between day columns in all-day section */
+.allday-grid-dividers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.allday-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border-color);  /* Match grid lines */
+}
+
+.allday-divider:nth-child(1) { left: calc(100% / 7 * 1); }
+.allday-divider:nth-child(2) { left: calc(100% / 7 * 2); }
+.allday-divider:nth-child(3) { left: calc(100% / 7 * 3); }
+.allday-divider:nth-child(4) { left: calc(100% / 7 * 4); }
+.allday-divider:nth-child(5) { left: calc(100% / 7 * 5); }
+.allday-divider:nth-child(6) { left: calc(100% / 7 * 6); }
+
+/* Day background cells for today highlighting in all-day section */
+.allday-day-backgrounds {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    pointer-events: none;
+    z-index: 0;
+}
+
+.allday-day-cell {
+    background: transparent;
+}
+
+.allday-day-cell.today {
+    background: color-mix(in srgb, var(--accent-color) 5%, transparent);
+}
+
+.allday-events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px;
+}
+
+/* All-day event bar - spans multiple columns */
+.allday-event-bar {
+    display: flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.15s ease;
+    font-size: 11px;
+    font-weight: 500;
+    min-height: 18px;
+    border-left: 3px solid currentColor;
+    position: relative;
+    z-index: 1;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.allday-event-bar:hover {
+    filter: brightness(0.95);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+
+/* Date range events - have specific times but span multiple days */
+.allday-event-bar.date-range {
+    border-style: dotted;
+    border-width: 2px;
+    border-color: currentColor;
+    border-left-width: 2px;
+}
+
+.allday-event-bar.date-range .allday-event-title {
+    font-style: italic;
+}
+
+.allday-event-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    pointer-events: none;
+}
+
+/* Resize handles for all-day events - DISABLED */
+.allday-resize-handle {
+    display: none;
+}
+
+/* Status colors for all-day bars */
+.allday-event-bar.status-received {
+    background: var(--status-received-bg);
+    color: var(--status-received);
+    border-left-color: var(--status-received);
+}
+.allday-event-bar.status-hold {
+    background: var(--status-hold-bg);
+    color: var(--status-hold);
+    border-left-color: var(--status-hold);
+}
+.allday-event-bar.status-referred {
+    background: var(--status-referred-bg);
+    color: var(--status-referred);
+    border-left-color: var(--status-referred);
+}
+.allday-event-bar.status-fyied {
+    background: var(--status-fyied-bg);
+    color: var(--status-fyied);
+    border-left-color: var(--status-fyied);
+}
+.allday-event-bar.status-scheduling_in_progress {
+    background: var(--status-scheduling_in_progress-bg);
+    color: var(--status-scheduling_in_progress);
+    border-left-color: var(--status-scheduling_in_progress);
+}
+.allday-event-bar.status-scheduled {
+    background: var(--status-scheduled-bg);
+    color: var(--status-scheduled);
+    border-left-color: var(--status-scheduled);
+}
+.allday-event-bar.status-rsvped {
+    background: var(--status-rsvped-bg);
+    color: var(--status-rsvped);
+    border-left-color: var(--status-rsvped);
+}
+.allday-event-bar.status-regrets_sent {
+    background: var(--status-regrets_sent-bg);
+    color: var(--status-regrets_sent);
+    border-left-color: var(--status-regrets_sent);
+}
+.allday-event-bar.status-passed {
+    background: var(--status-passed-bg);
+    color: var(--status-passed);
+    border-left-color: var(--status-passed);
+}
+.allday-event-bar.status-canceled {
+    background: var(--status-canceled-bg);
+    color: var(--status-canceled);
+    border-left-color: var(--status-canceled);
+}
+.allday-event-bar.status-requires_hms_review {
+    background: var(--status-requires_hms_review-bg);
+    color: var(--status-requires_hms_review);
+    border-left-color: var(--status-requires_hms_review);
+}
+
+/* Continuation indicators for events extending beyond visible week */
+.allday-event-bar.continues-left {
+    border-left-width: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-left: -4px;
+    padding-left: 12px;
+}
+
+.allday-event-bar.continues-right {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-right: -4px;
+}
+
+.allday-event-bar.continues-left::before {
+    content: '\2026';
+    margin-right: 4px;
+    opacity: 0.6;
+}
+
+/* Scrollable Body */
+.week-view-body {
+    flex: 1;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* CSS Grid for perfect alignment */
+.week-grid {
+    display: grid;
+    grid-template-columns: var(--calendar-time-column-width) repeat(7, 1fr);
+    background: var(--bg-primary);
+    /* No padding needed - scrollbar is outside the grid content area */
+}
+
+/* Time Gutter (left column with time labels) */
+.time-gutter {
+    height: var(--calendar-hour-height);
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 4px 8px 0 4px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    box-sizing: border-box;
+    /* Prevent text selection */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Hour cells (day columns) */
+.hour-cell {
+    height: var(--calendar-hour-height);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    box-sizing: border-box;
+    position: relative;
+    background: var(--bg-primary);
+}
+
+.hour-cell:nth-child(8n) {
+    border-right: none; /* Last column in each row */
+}
+
+/* Half-hour line */
+.hour-cell::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    border-bottom: 1px dashed var(--border-color);
+    opacity: 0.5;
+}
+
+/* Today's column background */
+.hour-cell.today {
+    background: color-mix(in srgb, var(--accent-color) 4%, var(--bg-primary));
+}
+
+/* Events Layer - positioned over the grid */
+.week-events-layer {
+    position: absolute;
+    top: 0;
+    left: var(--calendar-time-column-width);
+    right: 0;
+    height: calc(24 * 60px); /* 24 hours * 60px per hour */
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    pointer-events: none;
+}
+
+.day-events-column {
+    position: relative;
+    pointer-events: auto;
+    box-sizing: border-box;
+}
+
+/* Time column header for day view */
+.time-column-header {
+    height: 50px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Slightly darker fill for the leftmost time column (the time axis going down)
+   and its header/all-day cells, so it reads distinctly from the day columns. */
+.time-gutter,
+.time-gutter-header,
+.allday-gutter,
+.allday-expand-tab,
+.time-column-header {
+    background: var(--calendar-surface);
+}
+
+/* Current Time Indicator */
+.current-time-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-color);
+    z-index: 20;
+}
+
+.current-time-line::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    background: var(--accent-color);
+    border-radius: 50%;
+}
+
+/* =============================================================================
+   Day View
+   ============================================================================= */
+
+/* Day view header row */
+.day-header-row {
+    display: grid;
+    grid-template-columns: var(--calendar-time-column-width) 1fr;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    z-index: 10;
+    padding-right: var(--scrollbar-width, 17px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    /* Prevent text selection */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Day view scrollable body */
+.day-view-body {
+    flex: 1;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Day view CSS grid */
+.day-grid {
+    display: grid;
+    grid-template-columns: var(--calendar-time-column-width) 1fr;
+    background: var(--bg-primary);
+}
+
+/* Day view hour cells use same styles as week view */
+.day-grid .hour-cell {
+    border-right: none; /* No right border needed for single day */
+}
+
+/* Day view events layer */
+.day-events-layer {
+    position: absolute;
+    top: 0;
+    left: var(--calendar-time-column-width);
+    right: 0;
+    height: calc(24 * 60px); /* 24 hours * 60px per hour */
+    pointer-events: none;
+}
+
+.day-events-layer .day-events-column {
+    position: relative;
+    height: 100%;
+    pointer-events: auto;
+}
+
+/* Day view event text - larger than week view */
+.day-events-layer .event-block-title {
+    font-size: var(--font-size-base);
+    line-height: 1.4;
+}
+
+.day-events-layer .event-block-time {
+    font-size: var(--font-size-sm);
+}
+
+.day-events-layer .event-block-location {
+    font-size: var(--font-size-sm);
+}
+
+/* =============================================================================
+   Month View
+   ============================================================================= */
+.month-view-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: auto repeat(6, 1fr);
+    flex: 1;
+    gap: 1px;
+    background: var(--border-color);
+    overflow: hidden;
+}
+
+.month-header-cell {
+    background: var(--bg-primary);
+    padding: var(--spacing-sm);
+    text-align: center;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.month-day-cell {
+    background: var(--bg-primary);
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.month-day-cell:hover {
+    background: var(--bg-tertiary);
+}
+
+.month-day-cell.other-month {
+    background: var(--bg-secondary);
+}
+
+.month-day-cell.other-month .day-number {
+    color: var(--text-tertiary);
+}
+
+.month-day-cell.today {
+    background-color: color-mix(in srgb, var(--accent-color) 5%, white);
+}
+
+.month-day-cell .day-number {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.month-day-cell.today .day-number {
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+.month-day-events {
+    flex: 1;
+    min-height: 0; /* Allow flex child to shrink within grid cell */
+    padding: 0 var(--spacing-xs) var(--spacing-xs);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Thin scrollbar for month day events */
+.month-day-events::-webkit-scrollbar {
+    width: 3px;
+}
+.month-day-events::-webkit-scrollbar-track {
+    background: transparent;
+}
+.month-day-events::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+.month-day-events {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+/* Event Chip (Month View) */
+.event-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.event-chip:hover {
+    opacity: 0.8;
+}
+
+.event-chip .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.event-chip .event-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.more-events {
+    padding: 2px var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.more-events:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+/* =============================================================================
+   Schedule View
+   ============================================================================= */
+.schedule-view {
+    padding: var(--spacing-lg);
+}
+
+/* Schedule Week Header */
+.schedule-week-header {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.schedule-week-header .week-range {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.schedule-day-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.schedule-day-group.empty .schedule-event-list {
+    min-height: 40px;
+}
+
+.schedule-no-events {
+    padding: var(--spacing-md);
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+    font-style: italic;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.schedule-day-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: var(--spacing-sm);
+}
+
+.schedule-day-header .date-label {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.schedule-day-header .day-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.schedule-day-header.today {
+    border-bottom-color: var(--accent-color);
+}
+
+.schedule-day-header.today .date-label {
+    color: var(--accent-color);
+}
+
+.schedule-event-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.schedule-event-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border-left: 4px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.schedule-event-row:hover {
+    background: var(--bg-tertiary);
+    transform: translateX(4px);
+}
+
+.schedule-event-time {
+    min-width: 80px;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.schedule-event-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.schedule-event-title {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.schedule-event-location {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+}
+
+.schedule-event-status {
+    flex-shrink: 0;
+}
+
+/* =============================================================================
+   Event Block (Week/Day Views)
+   ============================================================================= */
+.event-block {
+    position: absolute;
+    min-height: 24px;
+    padding: var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 1;
+    box-sizing: border-box;
+}
+
+.event-block:hover {
+    z-index: 100;
+    box-shadow: var(--shadow-lg);
+    transform: scale(1.02);
+}
+
+/* Inner content wrapper to clip text while allowing resize handles to extend beyond */
+.event-block-content {
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+}
+
+.event-block-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-bottom: 2px;
+}
+
+.event-block-title {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: inherit;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    word-wrap: break-word;
+    line-height: 1.3;
+}
+
+.event-block-time {
+    font-size: 10px;
+    opacity: 0.9;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Compact: blocks too narrow to read (tagged post-layout by
+   applyCompactEventBlocks). Drop the secondary lines and shrink the title so a
+   sliver of column still reads as an event; full title is on hover + detail. */
+.event-block-compact {
+    padding: 2px;
+}
+.event-block-compact .event-block-time,
+.event-block-compact .event-block-location {
+    display: none;
+}
+.event-block-compact .event-block-title {
+    font-size: 9px;
+    line-height: 1.1;
+    -webkit-line-clamp: 2;
+}
+
+.event-block-location {
+    font-size: 10px;
+    opacity: 0.7;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    word-wrap: break-word;
+    line-height: 1.3;
+}
+
+/* =============================================================================
+   Status Badge Component
+   ============================================================================= */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full, 9999px);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+/* Status-specific styling - all solid borders */
+.status-received {
+    background-color: var(--status-received-bg);
+    color: var(--status-received);
+    border: 2px solid var(--status-received);
+}
+.status-hold {
+    background-color: var(--status-hold-bg);
+    color: var(--status-hold);
+    border: 2px solid var(--status-hold);
+}
+.status-referred {
+    background-color: var(--status-referred-bg);
+    color: var(--status-referred);
+    border: 2px solid var(--status-referred);
+}
+.status-fyied {
+    background-color: var(--status-fyied-bg);
+    color: var(--status-fyied);
+    border: 2px solid var(--status-fyied);
+}
+.status-scheduling_in_progress {
+    background-color: var(--status-scheduling_in_progress-bg);
+    color: var(--status-scheduling_in_progress);
+    border: 2px solid var(--status-scheduling_in_progress);
+}
+.status-scheduled {
+    background-color: var(--status-scheduled-bg);
+    color: var(--status-scheduled);
+    border: 2px solid var(--status-scheduled);
+}
+.status-rsvped {
+    background-color: var(--status-rsvped-bg);
+    color: var(--status-rsvped);
+    border: 2px solid var(--status-rsvped);
+}
+.status-regrets_sent {
+    background-color: var(--status-regrets_sent-bg);
+    color: var(--status-regrets_sent);
+    border: 2px solid var(--status-regrets_sent);
+}
+.status-passed {
+    background-color: var(--status-passed-bg);
+    color: var(--status-passed);
+    border: 2px solid var(--status-passed);
+}
+.status-canceled {
+    background-color: var(--status-canceled-bg);
+    color: var(--status-canceled);
+    border: 2px solid var(--status-canceled);
+}
+/* Note: canceled events used to be rendered with line-through here. Removed
+   per design: status color alone communicates the cancellation; titles read
+   cleanly across all statuses. */
+
+/* Inactive/deactivated options styling */
+.option-inactive {
+    text-decoration: line-through;
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+/* Strikethrough for inactive status badges */
+.status-badge.inactive,
+.status-badge[data-inactive="true"] {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+.status-requires_hms_review {
+    background-color: var(--status-requires_hms_review-bg);
+    color: var(--status-requires_hms_review);
+    border: 2px solid var(--status-requires_hms_review);
+}
+
+/* Event block status styling - all solid borders */
+.event-block.status-received { border-left: 4px solid var(--status-received); background: var(--status-received-bg); }
+.event-block.status-hold { border-left: 4px solid var(--status-hold); background: var(--status-hold-bg); }
+.event-block.status-referred { border-left: 4px solid var(--status-referred); background: var(--status-referred-bg); }
+.event-block.status-fyied { border-left: 4px solid var(--status-fyied); background: var(--status-fyied-bg); }
+.event-block.status-scheduling_in_progress { border-left: 4px solid var(--status-scheduling_in_progress); background: var(--status-scheduling_in_progress-bg); }
+.event-block.status-scheduled { border-left: 4px solid var(--status-scheduled); background: var(--status-scheduled-bg); }
+.event-block.status-rsvped { border-left: 4px solid var(--status-rsvped); background: var(--status-rsvped-bg); }
+.event-block.status-regrets_sent { border-left: 4px solid var(--status-regrets_sent); background: var(--status-regrets_sent-bg); }
+.event-block.status-passed { border-left: 4px solid var(--status-passed); background: var(--status-passed-bg); }
+.event-block.status-canceled { border-left: 4px solid var(--status-canceled); background: var(--status-canceled-bg); }
+.event-block.status-requires_hms_review { border-left: 4px solid var(--status-requires_hms_review); background: var(--status-requires_hms_review-bg); }
+
+/* Schedule row status styling - all solid borders */
+.schedule-event-row.status-received { border-left-color: var(--status-received); }
+.schedule-event-row.status-hold { border-left-color: var(--status-hold); }
+.schedule-event-row.status-referred { border-left-color: var(--status-referred); }
+.schedule-event-row.status-fyied { border-left-color: var(--status-fyied); }
+.schedule-event-row.status-scheduling_in_progress { border-left-color: var(--status-scheduling_in_progress); }
+.schedule-event-row.status-scheduled { border-left-color: var(--status-scheduled); }
+.schedule-event-row.status-rsvped { border-left-color: var(--status-rsvped); }
+.schedule-event-row.status-regrets_sent { border-left-color: var(--status-regrets_sent); }
+.schedule-event-row.status-passed { border-left-color: var(--status-passed); }
+.schedule-event-row.status-canceled { border-left-color: var(--status-canceled); }
+.schedule-event-row.status-requires_hms_review { border-left-color: var(--status-requires_hms_review); }
+
+/* Status dot colors for month view chips */
+.status-dot.status-received { background: var(--status-received); }
+.status-dot.status-hold { background: var(--status-hold); }
+.status-dot.status-referred { background: var(--status-referred); }
+.status-dot.status-fyied { background: var(--status-fyied); }
+.status-dot.status-scheduling_in_progress { background: var(--status-scheduling_in_progress); }
+.status-dot.status-scheduled { background: var(--status-scheduled); }
+.status-dot.status-rsvped { background: var(--status-rsvped); }
+.status-dot.status-regrets_sent { background: var(--status-regrets_sent); }
+.status-dot.status-passed { background: var(--status-passed); }
+.status-dot.status-canceled { background: var(--status-canceled); }
+.status-dot.status-requires_hms_review { background: var(--status-requires_hms_review); }
+
+/* =============================================================================
+   Special Indicators
+   ============================================================================= */
+.needs-review-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 6px;
+    background: var(--status-requires_hms_review-bg);
+    color: var(--status-requires_hms_review);
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.needs-review-badge::before {
+    content: '\26A0'; /* Warning triangle */
+}
+
+.email-indicator {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-tertiary);
+    font-size: 12px;
+}
+
+.email-indicator::before {
+    content: '\2709'; /* Envelope */
+}
+
+/* =============================================================================
+   Empty State
+   ============================================================================= */
+.calendar-empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-tertiary);
+    font-size: var(--font-size-md);
+    pointer-events: none;
+    user-select: none;
+    z-index: 5;
+}
+
+/* =============================================================================
+   Loading State
+   ============================================================================= */
+/* Stretches to fill the .calendar-view and stacks children vertically so the
+   embedded skeleton (week-header-row + week-view-body, or month-view-grid) reuses
+   the real calendar grid CSS for headers, time gutter, and grid lines. */
+.calendar-loading {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =============================================================================
+   Sidebar Overlay (for mobile filter panel)
+   ============================================================================= */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 99;
+    transition: opacity 0.3s ease;
+}
+
+@media (max-width: 1024px) {
+    .sidebar-overlay.visible {
+        display: block;
+    }
+}
+
+/* =============================================================================
+   Responsive Styles
+   ============================================================================= */
+@media (max-width: 1024px) {
+    .mobile-sidebar-toggle {
+        display: flex;
+    }
+
+    .calendar-header-bar {
+        gap: var(--spacing-sm);
+    }
+
+    .calendar-page-title .period-label {
+        font-size: var(--font-size-lg);
+    }
+}
+
+@media (max-width: 850px) {
+    /* Hide "Office Calendar ·" text but keep the period label (mini calendar dropdown) */
+    .calendar-page-title {
+        font-size: 0;
+    }
+    .calendar-page-title .title-separator {
+        display: none;
+    }
+    .calendar-page-title .period-label {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .calendar-redesign-container {
+        height: calc(100vh - 60px);
+    }
+
+    .calendar-header-bar {
+        padding: var(--spacing-sm) var(--spacing-md);
+        gap: var(--spacing-xs);
+    }
+
+    .calendar-page-title .period-label {
+        font-size: var(--font-size-md);
+    }
+
+    .view-toggle-btn {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-xs);
+    }
+
+    /* Hide filters text, show only icon on mobile */
+    .filters-toggle-btn .filters-text {
+        display: none;
+    }
+
+    .day-column {
+        min-width: 100px;
+    }
+
+    .month-day-cell {
+        min-height: 80px;
+    }
+
+    .schedule-event-row {
+        flex-wrap: wrap;
+    }
+
+    .schedule-event-time {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
+/* =============================================================================
+   Print Styles
+   ============================================================================= */
+@media print {
+    .calendar-filter-sidebar,
+    .calendar-header-bar .nav-controls,
+    .calendar-header-bar .view-toggle {
+        display: none !important;
+    }
+
+    .calendar-main-area {
+        margin: 0;
+    }
+
+    .event-block {
+        break-inside: avoid;
+    }
+}
+
+/* =============================================================================
+   Event Hover Popup
+   ============================================================================= */
+.event-hover-popup {
+    position: fixed;
+    z-index: 500;
+    background: var(--bg-primary);
+    border: 3px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    min-width: 280px;
+    max-width: 360px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px);
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+/* Status-colored popup borders */
+.event-hover-popup.status-received { border-color: var(--status-received); }
+.event-hover-popup.status-hold { border-color: var(--status-hold); }
+.event-hover-popup.status-referred { border-color: var(--status-referred); }
+.event-hover-popup.status-fyied { border-color: var(--status-fyied); }
+.event-hover-popup.status-scheduling_in_progress { border-color: var(--status-scheduling_in_progress); }
+.event-hover-popup.status-scheduled { border-color: var(--status-scheduled); }
+.event-hover-popup.status-rsvped { border-color: var(--status-rsvped); }
+.event-hover-popup.status-regrets_sent { border-color: var(--status-regrets_sent); }
+.event-hover-popup.status-passed { border-color: var(--status-passed); }
+.event-hover-popup.status-canceled { border-color: var(--status-canceled); }
+.event-hover-popup.status-requires_hms_review { border-color: var(--status-requires_hms_review); }
+
+.event-hover-popup.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+
+/* Popup content */
+.popup-content {
+    padding: var(--spacing-md);
+    cursor: default;
+    /* Allow text selection in popups */
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+}
+
+.popup-title {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+    line-height: 1.3;
+}
+
+.popup-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
+}
+
+.popup-datetime,
+.popup-location,
+.popup-description {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+}
+
+/* Popup icons */
+.popup-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+    margin-top: 1px;
+}
+
+.popup-datetime-text,
+.popup-location-text,
+.popup-description-text {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.popup-datetime-text {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.popup-description-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Status row */
+.popup-status-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.popup-status-row label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.popup-status-select {
+    flex: 1;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary, #f9fafb);
+    color: var(--text-secondary, #6b7280);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.popup-status-select:hover {
+    opacity: 0.85;
+}
+
+.popup-status-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 20%, transparent);
+}
+
+/* Status dropdown - neutral gray for all statuses */
+
+/* View Details button */
+.popup-view-details {
+    display: block;
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--accent-color);
+    background: var(--bg-secondary);
+    border: none;
+    border-top: 1px solid var(--border-color);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.popup-view-details:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+/* Hide popup on mobile */
+@media (max-width: 768px) {
+    .event-hover-popup {
+        display: none !important;
+    }
+}
+
+/* =============================================================================
+   Drag and Drop / Resize Functionality
+   ============================================================================= */
+
+/* Resize handles - appear on hover */
+.event-block .resize-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 12px;
+    cursor: ns-resize;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+}
+
+.event-block:hover .resize-handle {
+    opacity: 1;
+}
+
+/* Top handle extends upward for short events */
+.resize-handle-top {
+    top: -4px;
+}
+
+/* Bottom handle extends downward for short events */
+.resize-handle-bottom {
+    bottom: -4px;
+}
+
+.resize-handle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 2px;
+    top: 50%;
+    margin-top: -1.5px;
+}
+
+/* Dragging state */
+.event-block.dragging {
+    opacity: 0.8;
+    z-index: 1000 !important;
+    cursor: grabbing;
+    box-shadow: var(--shadow-xl, 0 25px 50px -12px rgba(0, 0, 0, 0.25));
+    transition: none;
+}
+
+/* Disable hover effects while dragging */
+.event-block.dragging:hover {
+    transform: none;
+}
+
+/* Ghost/preview element for dragging events */
+.event-drag-ghost {
+    position: absolute;
+    background: var(--accent-color);
+    opacity: 0.3;
+    border-radius: var(--radius-md);
+    pointer-events: none;
+    z-index: 999;
+    border: 2px dashed var(--accent-color);
+    /* Position is set dynamically by JavaScript based on overlapping events */
+}
+
+/* Time tooltip during drag */
+.drag-time-tooltip {
+    position: fixed;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 6px 10px;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    z-index: 10000;
+    pointer-events: none;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
+
+/* Cursor style for draggable events */
+.event-block {
+    cursor: pointer;
+}
+
+/* Resize handles extend beyond short events */
+.event-block {
+    overflow: visible;
+}
+
+/* Prevent text selection during drag */
+.calendar-view-container.dragging,
+.calendar-view-container.creating {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Disable pointer events on other elements during drag */
+.calendar-view-container.dragging .event-block:not(.dragging) {
+    pointer-events: none;
+}
+
+/* =============================================================================
+   Click-to-Create Event Preview
+   ============================================================================= */
+
+/* Preview box - similar to drag ghost but with dotted border */
+.event-create-preview {
+    position: absolute;
+    background: rgba(239, 68, 68, 0.2);
+    border: 2px dotted rgba(0, 0, 0, 0.4);
+    border-radius: var(--radius-md);
+    pointer-events: none;
+    z-index: 998;
+    left: 0;
+    right: 0;
+    box-sizing: border-box;
+}
+
+/* Event title tooltip */
+.calendar-tooltip {
+    position: fixed;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    max-width: 350px;
+    word-wrap: break-word;
+    z-index: 10001;
+    pointer-events: none;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.calendar-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Create event popup */
+.event-create-popup {
+    position: fixed;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.event-create-popup .create-date-label {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 0 var(--spacing-xs);
+}
+
+.event-create-popup .create-time-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    padding: 0 var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
+}
+
+.event-create-popup .create-event-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.event-create-popup .create-event-btn:hover {
+    background: var(--accent-color-hover, var(--accent-color));
+    filter: brightness(0.9);
+}
+
+/* =============================================================================
+   Content Area (Calendar View)
+   ============================================================================= */
+.calendar-content-area {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Left-edge shadow on the content area — starts right at the top of the
+   calendar body (below the header). The header bar (z-index 40) and its
+   spandrel (z-index 50) sit above this, so the shadow goes under them. */
+.calendar-content-area::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 6px;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.03), transparent);
+    z-index: 30;
+    pointer-events: none;
+}
+
+
+/* =============================================================================
+   Mini Calendar Styles (used in popover)
+   ============================================================================= */
+
+.mini-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
+.mini-cal-month-label {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.mini-cal-nav {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    transition: all 0.2s ease;
+}
+
+.mini-cal-nav:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.mini-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    text-align: center;
+    font-size: var(--font-size-xs);
+}
+
+.mini-cal-day-header {
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 2px 0;
+    font-size: 9px;
+    text-transform: uppercase;
+}
+
+.mini-cal-day {
+    padding: 4px 2px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.15s ease;
+}
+
+.mini-cal-day:hover {
+    background: var(--bg-secondary);
+}
+
+.mini-cal-day.other-month {
+    color: var(--text-tertiary);
+}
+
+.mini-cal-day.today {
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.mini-cal-day.selected {
+    background: var(--accent-color);
+    color: white;
+    font-weight: 600;
+}
+
+.mini-cal-day.today.selected {
+    background: var(--accent-color);
+    color: white;
+}
+
+/* Week highlighting in mini calendar when in week view */
+.mini-cal-day.in-selected-week {
+    background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+.mini-cal-day.in-selected-week:hover {
+    background: color-mix(in srgb, var(--accent-color) 20%, transparent);
+}
+
+.mini-cal-day.in-selected-week.today {
+    background: color-mix(in srgb, var(--accent-color) 25%, transparent);
+}
+
+.mini-cal-day.in-selected-week.selected {
+    background: var(--accent-color);
+    color: white;
+}
+
+
+/* ==========================================================================
+   Event Highlight Animation (for "View on Calendar" navigation)
+   ========================================================================== */
+
+@keyframes eventHighlightPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(43, 94, 160, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(43, 94, 160, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(43, 94, 160, 0);
+    }
+}
+
+.calendar-event-highlight {
+    animation: eventHighlightPulse 0.6s ease-out 3;
+    outline: 2px solid var(--accent-color, #2b5ea0);
+    outline-offset: 2px;
+    z-index: 100 !important;
+}
+
+/* Selected event — shown in detail panel */
+.calendar-event-active {
+    outline: 2px solid var(--accent-color, #2b5ea0) !important;
+    outline-offset: 1px;
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--accent-color) 35%, transparent) !important;
+    z-index: 100 !important;
+}
+
+/* Favorite filter buttons (calendar page) */
+.calendar-filter-sidebar .filter-favorites {
+    display: flex;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-top: var(--spacing-xs);
+    border-top: 1px solid var(--border-color);
+}
+
+.calendar-filter-sidebar .filter-favorite-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.calendar-filter-sidebar .filter-favorite-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.calendar-filter-sidebar .filter-favorite-btn svg {
+    flex-shrink: 0;
+}
+
+/* Auto-load checkbox (calendar page) */
+.calendar-filter-sidebar .filter-auto-load {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px var(--spacing-md) var(--spacing-sm);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.calendar-filter-sidebar .filter-auto-load input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--accent-color);
+    cursor: pointer;
+}
+
+.calendar-filter-sidebar .filter-auto-load span {
+    cursor: pointer;
+}
+
+/* Filter toast (shared) */
+.filter-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text-primary, #1e293b);
+    color: var(--bg-primary, #fff);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 9999;
+}
+
+.filter-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================================================
+   Detail Panel (inline sidebar, compresses calendar content)
+   ========================================================================== */
+
+/* Panel sits inside calendar-content-area and compresses the calendar view */
+.calendar-detail-panel {
+    width: 0;
+    min-width: 0;
+    background: var(--bg-primary, #ffffff);
+    border-left: 1px solid var(--border-color, #e5e7eb);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: width 0.25s ease, min-width 0.25s ease;
+}
+
+.calendar-detail-panel.open {
+    width: 380px;
+    min-width: 380px;
+}
+
+/* Re-use detail-panel-content styles from schedule-redesign.css */
+.calendar-detail-panel .detail-panel-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    min-width: 380px; /* Prevent content reflow during animation */
+}
+
+.calendar-detail-panel .detail-panel-header {
+    flex-shrink: 0;
+}
+
+.calendar-detail-panel .detail-panel-body {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.calendar-detail-panel .detail-panel-footer {
+    flex-shrink: 0;
+}
+
+/* Narrow screens: panel fills content area instantly */
+@media (max-width: 900px) {
+    .calendar-detail-panel {
+        transition: none;
+    }
+    .calendar-detail-panel.open {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: auto;
+        min-width: 0;
+        /* Sits above selected-event highlight (z-index 100) so the popup
+           actually covers the calendar grid underneath it. */
+        z-index: 200;
+        border-left: none;
+    }
+    .calendar-detail-panel .detail-panel-content {
+        min-width: 0;
+    }
+}
+
+/* ==========================================================================
+   Calendar Detail Panel — Collapse / Restore
+   ========================================================================== */
+
+.calendar-detail-panel {
+    position: relative;
+}
+
+.calendar-detail-panel .detail-panel-collapse-btn {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: white;
+    border: 1px solid var(--border-color, #e5e7eb);
+    color: var(--text-secondary, #6b7280);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    z-index: 5;
+    transition: all 0.15s ease;
+}
+
+.calendar-detail-panel .detail-panel-collapse-btn:hover {
+    background: var(--bg-secondary, #f8fafc);
+    color: var(--text-primary, #1f2937);
+    border-color: var(--text-tertiary, #9ca3af);
+}
+
+.calendar-detail-panel .detail-panel-collapse-btn svg {
+    display: block;
+}
+
+/* Only show the collapse button when the panel is actually open */
+.calendar-detail-panel.open .detail-panel-collapse-btn {
+    display: flex;
+}
+
+.calendar-detail-panel.open .detail-panel-footer {
+    padding-left: 56px;
+}
+
+/* Collapsed state — panel slides closed even though it remains "open" */
+.calendar-content-area.detail-panel-collapsed .calendar-detail-panel.open {
+    width: 0;
+    min-width: 0;
+}
+
+/* Floating restore circle — bottom-right corner of the calendar content area */
+.calendar-content-area .detail-panel-restore-btn {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-primary, #ffffff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    color: var(--text-primary, #111827);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    z-index: 30;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.calendar-content-area .detail-panel-restore-btn:hover {
+    transform: scale(1.06);
+    background: var(--bg-secondary, #f9fafb);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+.calendar-content-area .detail-panel-restore-btn svg {
+    display: block;
+}
+
+.calendar-content-area.detail-panel-collapsed .detail-panel-restore-btn {
+    display: flex;
+}
+
+/* Below the popup breakpoint, the calendar panel becomes a fullscreen overlay
+   with its own close (X) button — collapse/restore controls don't apply. */
+@media (max-width: 900px) {
+    .calendar-detail-panel .detail-panel-collapse-btn,
+    .calendar-content-area .detail-panel-restore-btn,
+    .calendar-content-area.detail-panel-collapsed .detail-panel-restore-btn {
+        display: none !important;
+    }
+    .calendar-detail-panel.open .detail-panel-footer {
+        padding-left: 16px;
+    }
+}

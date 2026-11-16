@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HillDesk - Congressional Staff Scheduling Application">
+    <title>{% block title %}HillDesk{% endblock %}</title>
+
+    <!-- Self-hosted fonts (Inter, Lexend) - see static/fonts/LICENSES.md -->
+    {% load static %}<link href="{% static 'css/fonts.css' %}" rel="stylesheet">
+
+    <!-- Preload critical resources -->
+    {% load static %}
+    <link rel="preload" href="{% static 'css/main.css' %}?v=2" as="style">
+    <link rel="preload" href="{% static 'js/main.js' %}" as="script">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/themes.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+    <link rel="stylesheet" href="{% static 'css/event-editing-modal-v2.css' %}?v=48">
+    <link rel="stylesheet" href="{% static 'css/keyboard-nav.css' %}?v=11">
+
+    {% block extra_css %}{% endblock %}
+
+    <!-- Dynamic CSS Variables for Office-Specific Status Colors -->
+    {% if office_status_choices %}
+    <style id="office-status-colors">
+        :root {
+            {% for status in office_status_choices %}
+            --status-{{ status.value }}: {{ status.color }};
+            --status-{{ status.value }}-bg: {{ status.bg_color }};
+            {% endfor %}
+        }
+        /* Dark mode overrides if needed */
+        [data-theme="dark"] {
+            {% for status in office_status_choices %}
+            --status-{{ status.value }}: {{ status.color }};
+            --status-{{ status.value }}-bg: {{ status.bg_color }}40;
+            {% endfor %}
+        }
+    </style>
+    {% endif %}
+
+    {% block extra_head %}{% endblock %}
+
+    <!-- Early theme/accent/sidebar initialization to prevent FOUC -->
+    <script>
+        (function() {
+            // Disable transitions during initial load
+            document.documentElement.classList.add('no-transition');
+
+            // Theme selection: when the user is authenticated, the server-side
+            // user.theme is authoritative (the UI toggle has been removed, so
+            // localStorage may be stale). Otherwise fall back to localStorage.
+            {% if user.is_authenticated %}
+            var theme = '{{ user.theme|default:"light" }}';
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('capitol-schedule-theme', theme);
+            {% else %}
+            var theme = localStorage.getItem('capitol-schedule-theme');
+            if (theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+            {% endif %}
+
+            // Accent color: like theme, the server-side user.accent_color is
+            // authoritative when authenticated (localStorage may be stale —
+            // e.g. a different account or after a DB reset). Otherwise fall
+            // back to localStorage.
+            {% if user.is_authenticated %}
+            var accent = '{{ user.accent_color|default:"blue" }}';
+            document.documentElement.setAttribute('data-accent', accent);
+            localStorage.setItem('capitol-schedule-accent', accent);
+            {% else %}
+            var accent = localStorage.getItem('capitol-schedule-accent');
+            if (accent) {
+                document.documentElement.setAttribute('data-accent', accent);
+            }
+            {% endif %}
+
+            // Set sidebar state on html element - CSS will use this (default: expanded)
+            var sidebarCollapsed = localStorage.getItem('hilldesk-sidebar-collapsed') === 'true';
+            document.documentElement.setAttribute('data-sidebar-collapsed', sidebarCollapsed ? 'true' : 'false');
+        })();
+    </script>
+    <style>
+        /* Disable all transitions during initial page load */
+        html.no-transition,
+        html.no-transition *,
+        html.no-transition *::before,
+        html.no-transition *::after {
+            transition: none !important;
+        }
+
+        /* Apply sidebar styles immediately based on html attribute to prevent FOUC */
+        /* Collapsed state */
+        html[data-sidebar-collapsed="true"] .sidebar {
+            width: var(--sidebar-collapsed-width, 60px) !important;
+        }
+        html[data-sidebar-collapsed="true"] .sidebar .nav-text {
+            display: none !important;
+        }
+        html[data-sidebar-collapsed="true"] .sidebar .nav-item {
+            justify-content: center !important;
+            padding: 10px !important;
+        }
+        html[data-sidebar-collapsed="true"] .sidebar .brand-name {
+            display: none !important;
+        }
+        html[data-sidebar-collapsed="true"] .sidebar .user-name-text {
+            display: none !important;
+        }
+        html[data-sidebar-collapsed="true"] .main-content {
+            margin-left: var(--sidebar-collapsed-width, 60px) !important;
+        }
+        html[data-sidebar-collapsed="true"] .footer {
+            margin-left: var(--sidebar-collapsed-width, 60px) !important;
+        }
+
+        /* Expanded state - ensure correct initial position */
+        html[data-sidebar-collapsed="false"] .sidebar {
+            width: var(--sidebar-width, 200px) !important;
+        }
+        html[data-sidebar-collapsed="false"] .main-content {
+            margin-left: var(--sidebar-width, 200px) !important;
+        }
+        html[data-sidebar-collapsed="false"] .footer {
+            margin-left: var(--sidebar-width, 200px) !important;
+        }
+    </style>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/hilldesk-favicon.svg' %}">
+
+    <!-- Security headers (X-Frame-Options, nosniff, CSP, HSTS) are sent as real
+         HTTP headers by Django middleware; browsers ignore them in <meta>. -->
+</head>
+
+<body class="{% block body_class %}{% endblock %}">
+    <!-- CSRF Token for AJAX requests -->
+    {% csrf_token %}
+
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    {% if user.is_authenticated %}
+    <!-- Left Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+        <!-- Brand at top — also acts as sidebar toggle -->
+        <a href="/" class="sidebar-brand" id="sidebar-toggle-btn" title="HillDesk">
+            {# Old: accent-colored box wrapper + inline SVG mark — kept commented for reference. #}
+            {% comment %}
+            <div class="brand-logo-box">
+                <svg class="brand-logo-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="currentColor">
+                    <rect x="3" y="176" width="86" height="16"/>
+                    <rect x="11" y="158" width="70" height="16"/>
+                    <polygon points="19,156 73,156 63.5,41 28.5,41"/>
+                    <rect x="21.5" y="25" width="49" height="14"/>
+                    <rect x="11" y="8" width="70" height="15"/>
+                    <rect x="111" y="176" width="86" height="16"/>
+                    <rect x="119" y="158" width="70" height="16"/>
+                    <polygon points="127,156 181,156 171.5,41 136.5,41"/>
+                    <rect x="129.5" y="25" width="49" height="14"/>
+                    <rect x="119" y="8" width="70" height="15"/>
+                    <rect x="57.3" y="86" width="85.5" height="25"/>
+                </svg>
+            </div>
+            {% endcomment %}
+            <div class="brand-logo-box">
+                <img class="brand-logo-img" src="{% static 'images/hd-logo-new-2.png' %}" alt="HillDesk">
+            </div>
+            <span class="brand-name">HillDesk</span>
+        </a>
+
+        <ul class="sidebar-nav" id="sidebar-nav" role="menubar" aria-label="Main navigation menu">
+            <li role="none">
+                <a href="{% url 'event_management:dashboard' %}"
+                    class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                    role="menuitem"
+                    aria-current="{% if request.resolver_match.url_name == 'dashboard' %}page{% else %}false{% endif %}"
+                    tabindex="0" data-tooltip="Dashboard">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
+                        role="img">
+                        <title>Dashboard</title>
+                        <path
+                            d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" />
+                        <path d="M9 22V12H15V22" />
+                    </svg>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="{% url 'event_management:inbox' %}"
+                    class="nav-item {% if request.resolver_match.url_name == 'inbox' %}active{% endif %}"
+                    role="menuitem" aria-current="{% if request.resolver_match.url_name == 'inbox' %}page{% else %}false{% endif %}" tabindex="-1" data-tooltip="Inbox">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
+                        role="img">
+                        <title>Inbox</title>
+                        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                    </svg>
+                    <span class="nav-text">Inbox</span>
+                    <span class="nav-badge" id="inbox-badge" style="display:none;">0</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="{% url 'event_management:calendar' %}"
+                    class="nav-item {% if 'calendar' in request.resolver_match.url_name %}active{% endif %}"
+                    role="menuitem"
+                    aria-current="{% if 'calendar' in request.resolver_match.url_name %}page{% else %}false{% endif %}"
+                    tabindex="-1" data-tooltip="Calendar">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
+                        role="img">
+                        <title>Calendar</title>
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                        <rect x="7" y="14" width="3" height="3" />
+                        <rect x="14" y="14" width="3" height="3" />
+                    </svg>
+                    <span class="nav-text">Calendar</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="{% url 'event_management:events' %}"
+                    class="nav-item {% if request.resolver_match.url_name == 'events' %}active{% endif %}"
+                    role="menuitem"
+                    aria-current="{% if request.resolver_match.url_name == 'events' %}page{% else %}false{% endif %}"
+                    tabindex="-1" data-tooltip="Events">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
+                        role="img">
+                        <title>Events</title>
+                        <polyline points="21,8 21,21 3,21 3,8" />
+                        <rect x="1" y="3" width="22" height="5" />
+                        <line x1="10" y1="12" x2="14" y2="12" />
+                    </svg>
+                    <span class="nav-text">Events</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="{% url 'contacts:list' %}"
+                    class="nav-item {% if request.resolver_match.namespace == 'contacts' %}active{% endif %}"
+                    role="menuitem"
+                    aria-current="{% if request.resolver_match.namespace == 'contacts' %}page{% else %}false{% endif %}"
+                    tabindex="-1" data-tooltip="Contacts">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
+                        role="img">
+                        <title>Contacts</title>
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span class="nav-text">Contacts</span>
+                </a>
+            </li>
+            <li role="none">
+                <a href="{% url 'event_management:settings' %}"
+                    class="nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}"
+                    role="menuitem"
+                    aria-current="{% if request.resolver_match.url_name == 'settings' %}page{% else %}false{% endif %}"
+                    tabindex="-1" data-tooltip="Settings">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"
+                        role="img">
+                        <title>Settings</title>
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.2573 9.77251 19.9887C9.5799 19.7201 9.31074 19.5176 9 19.41C8.69838 19.2769 8.36381 19.2372 8.03941 19.296C7.71502 19.3548 7.41568 19.5095 7.18 19.74L7.12 19.8C6.93425 19.986 6.71368 20.1335 6.47088 20.2341C6.22808 20.3348 5.96783 20.3866 5.705 20.3866C5.44217 20.3866 5.18192 20.3348 4.93912 20.2341C4.69632 20.1335 4.47575 19.986 4.29 19.8C4.10405 19.6143 3.95653 19.3937 3.85588 19.1509C3.75523 18.9081 3.70343 18.6478 3.70343 18.385C3.70343 18.1222 3.75523 17.8619 3.85588 17.6191C3.95653 17.3763 4.10405 17.1557 4.29 16.97L4.35 16.91C4.58054 16.6743 4.73519 16.375 4.794 16.0506C4.85282 15.7262 4.81312 15.3916 4.68 15.09C4.55324 14.7942 4.34276 14.542 4.07447 14.3643C3.80618 14.1866 3.49179 14.0913 3.17 14.09H3C2.46957 14.09 1.96086 13.8793 1.58579 13.5042C1.21071 13.1291 1 12.6204 1 12.09C1 11.5596 1.21071 11.0509 1.58579 10.6758C1.96086 10.3007 2.46957 10.09 3 10.09H3.09C3.42099 10.0823 3.742 9.97512 4.01062 9.78251C4.27925 9.5899 4.48167 9.32074 4.59 9.01C4.72312 8.70838 4.76282 8.37381 4.704 8.04941C4.64519 7.72502 4.49054 7.42568 4.26 7.19L4.2 7.13C4.01405 6.94425 3.86653 6.72368 3.76588 6.48088C3.66523 6.23808 3.61343 5.97783 3.61343 5.715C3.61343 5.45217 3.66523 5.19192 3.76588 4.94912C3.86653 4.70632 4.01405 4.48575 4.2 4.3C4.38575 4.11405 4.60632 3.96653 4.84912 3.86588C5.09192 3.76523 5.35217 3.71343 5.615 3.71343C5.87783 3.71343 6.13808 3.76523 6.38088 3.86588C6.62368 3.96653 6.84425 4.11405 7.03 4.3L7.09 4.36C7.32568 4.59054 7.62502 4.74519 7.94941 4.804C8.27381 4.86282 8.60838 4.82312 8.91 4.69H9C9.29577 4.56324 9.54802 4.35276 9.72569 4.08447C9.90337 3.81618 9.99872 3.50179 10 3.18V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5843 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.7719 3.67523 18.0322 3.62343 18.295 3.62343C18.5578 3.62343 18.8181 3.67523 19.0609 3.77588C19.3037 3.87653 19.5243 4.02405 19.71 4.21C19.896 4.39575 20.0435 4.61632 20.1441 4.85912C20.2448 5.10192 20.2966 5.36217 20.2966 5.625C20.2966 5.88783 20.2448 6.14808 20.1441 6.39088C20.0435 6.63368 19.896 6.85425 19.71 7.04L19.65 7.1C19.4195 7.33568 19.2648 7.63502 19.206 7.95941C19.1472 8.28381 19.1869 8.61838 19.32 8.92V9C19.4468 9.29577 19.6572 9.54802 19.9255 9.72569C20.1938 9.90337 20.5082 9.99872 20.83 10H21C21.5304 10 22.0391 10.2107 22.4142 10.5858C22.7893 10.9609 23 11.4696 23 12C23 12.5304 22.7893 13.0391 22.4142 13.4142C22.0391 13.7893 21.5304 14 21 14H20.91C20.5882 14.0013 20.2738 14.0966 20.0055 14.2743C19.7372 14.452 19.5268 14.7042 19.4 15Z" />
+                    </svg>
+                    <span class="nav-text">Settings</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- User account at bottom — button opens a small popup (Logout) -->
+        <div class="sidebar-user-wrap">
+            <button type="button" class="sidebar-user" id="sidebar-user-btn"
+                    aria-haspopup="menu" aria-expanded="false" aria-controls="sidebar-user-popup">
+                <div class="user-avatar" aria-hidden="true">
+                    <span>{{ user.get_display_initials }}</span>
+                </div>
+                <span class="user-name-text">{{ user.get_display_name }}</span>
+            </button>
+            <div class="sidebar-user-popup" id="sidebar-user-popup" role="menu" hidden>
+                <form method="post" action="{% url 'authentication:logout' %}" class="sidebar-user-popup-form">
+                    {% csrf_token %}
+                    <button type="submit" class="sidebar-user-popup-item" role="menuitem">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Apply saved sidebar state synchronously, before first paint, to avoid FOUC.
+         Runs during parse right after the nav so the .collapsed class is set before
+         the browser renders the sidebar (main.js later re-syncs on DOMContentLoaded). -->
+    <script>
+        (function() {
+            var sidebar = document.getElementById('sidebar');
+            if (!sidebar) return;
+            // Default to expanded unless the user explicitly saved 'true' (collapsed).
+            var collapsed = localStorage.getItem('hilldesk-sidebar-collapsed') === 'true';
+            sidebar.classList.toggle('collapsed', collapsed);
+            document.body.classList.toggle('sidebar-collapsed', collapsed);
+        })();
+    </script>
+
+    <!-- Mobile overlay for sidebar -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    {% else %}
+    <!-- Login page header for unauthenticated users -->
+    <header class="login-header" role="banner">
+        <div class="header-brand">
+            <span class="brand-text">HillDesk</span>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'authentication:login' %}" class="btn btn-primary">
+                Sign In
+            </a>
+        </div>
+    </header>
+    {% endif %}
+
+    <!-- Main content area -->
+    <main id="main-content" class="main-content" role="main">
+
+
+        <!-- Flash messages -->
+        {% if messages %}
+        <div class="messages" role="alert" aria-live="polite">
+            {% for message in messages %}
+            <div class="message message-{{ message.tags }}" data-message-type="{{ message.tags }}">
+                <div class="message-content">
+                    <svg class="message-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        {% if message.tags == 'success' %}
+                        <path
+                            d="M22 11.08V12C21.9988 14.1564 21.3005 16.2547 20.0093 17.9818C18.7182 19.7088 16.9033 20.9725 14.8354 21.5839C12.7674 22.1953 10.5573 22.1219 8.53447 21.3746C6.51168 20.6273 4.78465 19.2461 3.61096 17.4371C2.43727 15.628 1.87979 13.4905 2.02168 11.3363C2.16356 9.18203 2.99721 7.13214 4.39828 5.49883C5.79935 3.86553 7.69279 2.72636 9.79619 2.24223C11.8996 1.75809 14.1003 1.95185 16.07 2.79999"
+                            stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        <polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2"
+                            stroke-linejoin="round" />
+                        {% elif message.tags == 'error' %}
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+                        <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" />
+                        <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" />
+                        {% elif message.tags == 'warning' %}
+                        <path
+                            d="M10.29 3.86L1.82 18C1.64571 18.3024 1.55974 18.6453 1.57361 18.9928C1.58747 19.3403 1.70078 19.6763 1.90313 19.9644C2.10549 20.2525 2.38746 20.4804 2.71361 20.6219C3.03976 20.7634 3.39516 20.8131 3.74 20.77H20.26C20.6048 20.8131 20.9602 20.7634 21.2864 20.6219C21.6125 20.4804 21.8945 20.2525 22.0969 19.9644C22.2992 19.6763 22.4125 19.3403 22.4264 18.9928C22.4403 18.6453 22.3543 18.3024 22.18 18L13.71 3.86C13.5317 3.56611 13.2807 3.32312 12.9812 3.15448C12.6817 2.98585 12.3438 2.89725 12 2.89725C11.6562 2.89725 11.3183 2.98585 11.0188 3.15448C10.7193 3.32312 10.4683 3.56611 10.29 3.86V3.86Z"
+                            stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                        <line x1="12" y1="9" x2="12" y2="13" stroke="currentColor" stroke-width="2" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" stroke-width="2" />
+                        {% else %}
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+                        <path d="M12 16V12" stroke="currentColor" stroke-width="2" />
+                        <path d="M12 8H12.01" stroke="currentColor" stroke-width="2" />
+                        {% endif %}
+                    </svg>
+                    <span class="message-text">{{ message }}</span>
+                </div>
+                <button class="message-close" aria-label="Close message">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" />
+                        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" />
+                    </svg>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Page content -->
+        <div class="content-wrapper">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="content-wrapper">
+            <p class="footer-text">&copy; {% now "Y" %} HillDesk. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="#" class="footer-link">Privacy Policy</a>
+                <a href="#" class="footer-link">Terms of Service</a>
+                <a href="#" class="footer-link">Support</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading overlay - hidden by default, shown via JavaScript when needed -->
+    <div class="loading-overlay" id="loading-overlay" aria-hidden="true" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p class="loading-text">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Global Event Editing Modal Container - overlays entire window -->
+    <div id="event-editing-container" class="event-editing-container" aria-hidden="true">
+        <div class="loading-indicator">
+            <div class="spinner"></div>
+            <div>Loading event...</div>
+        </div>
+    </div>
+
+    <style>
+    /* Event Editing Container Styles - Covers entire viewport including header/sidebar */
+    .event-editing-container {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9999;
+        background: transparent;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        overflow-y: auto;
+        padding: 0;
+    }
+
+    .event-editing-container.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .event-editing-container .loading-indicator {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        height: 100%;
+        width: 100%;
+        color: white;
+    }
+
+    .event-editing-container .loading-indicator .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    /* Override modal styles when inside container - centered on screen */
+    .event-editing-container .v2-modal-overlay {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: transparent;
+    }
+
+    .event-editing-container .v2-modal-container {
+        max-height: 90vh;
+        max-width: 90vw;
+        margin: auto;
+        overflow-y: auto;
+    }
+    </style>
+
+    <!-- Scripts -->
+    <script src="{% load static %}{% static 'js/main.js' %}"></script>
+    <script src="{% load static %}{% static 'js/theme.js' %}"></script>
+    <script src="{% load static %}{% static 'js/components.js' %}?v=2"></script>
+    <script src="{% load static %}{% static 'js/recurrence-editor.js' %}?v=1"></script>
+    <script src="{% load static %}{% static 'js/event-editing-modal-v2.js' %}?v=44"></script>
+    <script src="{% load static %}{% static 'js/event-contacts-panel.js' %}?v=38"></script>
+    <script src="{% load static %}{% static 'js/event-review-cards.js' %}?v=8"></script>
+    <script src="{% load static %}{% static 'js/event-change-review.js' %}?v=6"></script>
+    <script src="{% load static %}{% static 'js/email-composer.js' %}?v=2"></script>
+    {{ settings_nav_tabs|json_script:"kbd-settings-tabs" }}
+    {{ office_status_choices|json_script:"kbd-status-choices" }}
+    <script src="{% load static %}{% static 'js/keyboard-nav.js' %}?v=16"></script>
+
+    <!-- Re-enable transitions after page has rendered -->
+    <script>
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                document.documentElement.classList.remove('no-transition');
+            });
+        });
+    </script>
+
+    <!-- Auto-dismiss toast messages -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-dismiss toast messages after 5 seconds
+        const messages = document.querySelectorAll('.message');
+        messages.forEach((message, index) => {
+            // Stagger the auto-dismiss for multiple messages
+            setTimeout(() => {
+                message.classList.add('fade-out');
+                setTimeout(() => message.remove(), 300);
+            }, 5000 + (index * 500));
+
+            // Close button handler
+            const closeBtn = message.querySelector('.message-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function() {
+                    message.classList.add('fade-out');
+                    setTimeout(() => message.remove(), 300);
+                });
+            }
+        });
+    });
+    </script>
+
+    {% if user.is_authenticated %}
+    <!-- Inbox badge count fetcher -->
+    <script>
+    (function() {
+        function updateInboxBadge() {
+            const badge = document.getElementById('inbox-badge');
+            if (!badge) return;
+
+            // Fetch both human review events and approval routing events
+            Promise.all([
+                fetch('/api/events/?requires_human_review=true&page_size=1').then(r => r.json()),
+                fetch('/api/events/needs-my-approval/?include_resolved=false').then(r => r.json()),
+                // Emails set aside for a decision ("Needs a decision" cards).
+                fetch('/email/api/triage/', { headers: { 'Accept': 'application/json' } })
+                    .then(r => r.ok ? r.json() : { count: 0 })
+                    .catch(() => ({ count: 0 }))
+            ])
+            .then(([humanReviewData, approvalData, decisionData]) => {
+                const humanReviewCount = humanReviewData.count || 0;
+                // The approval endpoint returns {events: [...], count: N};
+                // older responses returned a bare array, so support both.
+                const approvalCount = Array.isArray(approvalData)
+                    ? approvalData.length
+                    : (approvalData.count || (approvalData.events || []).length);
+                const totalCount = humanReviewCount + approvalCount + (decisionData.count || 0);
+
+                if (totalCount > 0) {
+                    badge.textContent = totalCount > 99 ? '99+' : totalCount;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.warn('Could not fetch inbox count:', error);
+                badge.style.display = 'none';
+            });
+        }
+
+        // Update on page load
+        document.addEventListener('DOMContentLoaded', updateInboxBadge);
+
+        // Update periodically (every 60 seconds)
+        setInterval(updateInboxBadge, 60000);
+
+        // Expose for manual refresh
+        window.updateInboxBadge = updateInboxBadge;
+    })();
+    </script>
+
+    <!-- Sidebar user popup (Logout) -->
+    <script>
+    (function() {
+        const btn = document.getElementById('sidebar-user-btn');
+        const popup = document.getElementById('sidebar-user-popup');
+        if (!btn || !popup) return;
+
+        function setOpen(open) {
+            popup.hidden = !open;
+            btn.setAttribute('aria-expanded', String(open));
+        }
+
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            setOpen(popup.hidden);
+        });
+
+        document.addEventListener('click', function(e) {
+            if (popup.hidden) return;
+            if (!popup.contains(e.target) && !btn.contains(e.target)) {
+                setOpen(false);
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !popup.hidden) {
+                setOpen(false);
+                btn.focus();
+            }
+        });
+    })();
+    </script>
+    {% endif %}
+
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

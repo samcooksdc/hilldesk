@@ -1,0 +1,381 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Keyboard navigation — command palette (Cmd/Ctrl-K), quick object search (/),
+ * and the shortcut cheat sheet (?). Three surfaces, one visual language.
+ *
+ * The palette and cheat sheet sit above the event-editing modal container
+ * (z-index 9999), so they use a higher band. Colours come from the theme
+ * variables in main.css, so both surfaces follow light/dark automatically.
+ */
+
+/* No fade/transition: the palette must appear the instant the key is pressed
+ * for the retrieval workflow to feel right. Shown/hidden via the .open class. */
+.kbd-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.kbd-overlay.open {
+    display: flex;
+}
+
+/* Transparent click-catcher: closes on outside click without darkening or
+ * blurring the page behind it. The panel carries the only visual weight (its
+ * shadow), so the surrounding UI stays fully legible. */
+.kbd-backdrop {
+    position: absolute;
+    inset: 0;
+    background: transparent;
+}
+
+/* Fixed height so the box never resizes with the number of results — the
+ * results area scrolls inside it and stays one stable size. */
+.kbd-panel {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    height: 340px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+}
+
+/* ---- input row — matches the inbox/schedule search field aesthetic ---- */
+.kbd-input-row {
+    position: relative;
+    padding: 10px 14px 2px;
+}
+
+.kbd-input-icon {
+    position: absolute;
+    left: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+/* The field is always focused while the palette is open, so it stays visually
+ * static — no hover/focus border, glow, or outline change. Typed text is bold;
+ * the placeholder stays regular weight. (Overrides the global input:focus ring
+ * in main.css, hence the explicit outline:none here.) */
+.kbd-input {
+    width: 100%;
+    padding: 8px 4px 8px 38px;
+    background: var(--bg-primary);
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    outline: none;
+}
+
+.kbd-input:focus,
+.kbd-input:focus-visible {
+    outline: none;
+    border-color: var(--border-color);
+    box-shadow: none;
+}
+
+.kbd-input::placeholder {
+    color: var(--text-muted);
+    font-weight: var(--font-weight-normal);
+}
+
+/* ---- results ---- */
+.kbd-results {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+
+.kbd-section-label {
+    padding: 8px 10px 4px;
+    font-size: 11px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.kbd-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 8px;
+    border-radius: 7px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.kbd-row.active {
+    background: var(--accent-color-light);
+}
+
+.kbd-row-icon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
+.kbd-row.active .kbd-row-icon {
+    background: var(--bg-primary);
+    color: var(--accent-color);
+}
+
+.kbd-row-icon svg { width: 15px; height: 15px; stroke-width: 2; }
+
+/* Object icons share one neutral color; the type is conveyed by the glyph
+ * (calendar / person / building) and, for events, the status badge. */
+
+.kbd-row-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.kbd-row-title {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Muted, regular-weight trailing context on a title (e.g. " · Settings"). */
+.kbd-title-suffix {
+    color: var(--text-muted);
+    font-weight: var(--font-weight-normal);
+}
+
+/* Matched characters of the typed query, highlighted in the accent color. */
+.kbd-hl {
+    color: var(--accent-color);
+    font-weight: var(--font-weight-bold);
+    background: transparent;
+}
+
+.kbd-row-sub {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 3px;
+}
+
+.kbd-row-type {
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* Event status pill on the right of event rows. Colours come inline from the
+ * office status palette (value → color/bg_color); this is the fallback. */
+.kbd-row-status {
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.02em;
+    padding: 2px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
+.kbd-row-shortcut {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 4px;
+}
+
+/* ---- empty / hint states ---- */
+.kbd-empty {
+    padding: 26px 18px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.kbd-empty-title {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    margin: 0 0 6px;
+}
+
+.kbd-empty-hint {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.kbd-empty-hint kbd { margin: 0 2px; }
+
+.kbd-loading {
+    padding: 22px 18px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+/* ---- footer: navigation key legend (shared by both palette modes) ---- */
+.kbd-footer {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 14px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.kbd-foot-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+/* ---- keycaps (shared by rows, cheat sheet) ---- */
+kbd.kbd-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-family: var(--font-family-base, inherit);
+    font-size: 11px;
+    font-weight: var(--font-weight-medium);
+    line-height: 1;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+}
+
+/* ---- cheat sheet ---- */
+.kbd-cheatsheet {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+}
+
+.kbd-cheat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.kbd-cheat-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.kbd-cheat-body {
+    padding: 8px 20px 18px;
+    max-height: 64vh;
+    overflow-y: auto;
+}
+
+.kbd-cheat-group-label {
+    font-size: 11px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 16px 0 6px;
+}
+
+.kbd-cheat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.kbd-cheat-row:last-child { border-bottom: none; }
+
+.kbd-cheat-desc {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.kbd-cheat-keys {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.kbd-cheat-keys .kbd-then {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin: 0 2px;
+}
+
+.kbd-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.kbd-icon-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.kbd-icon-btn svg { width: 18px; height: 18px; }
+
+@media (max-width: 640px) {
+    .kbd-overlay { padding: 8vh 10px 10px; }
+    .kbd-row-type { display: none; }
+}

@@ -1,0 +1,196 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* =============================================================================
+   Deleted Events tab (Settings)
+   Cards mirror the Schedule tab's event cards (.schedule-card) so the two
+   views look consistent.
+   ============================================================================= */
+
+.deleted-events-toolbar {
+    margin-bottom: var(--spacing-md);
+}
+
+.deleted-events-toolbar .settings-form-input {
+    max-width: 360px;
+}
+
+.deleted-events-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* --- Placeholder / empty / error states --- */
+.deleted-events-placeholder,
+.deleted-events-empty {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-lg) 0;
+    text-align: center;
+}
+
+.deleted-events-error {
+    color: var(--status-canceled, #ef4444);
+}
+
+.deleted-events-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: var(--spacing-xl, 2rem) 0;
+}
+
+.deleted-events-empty svg {
+    width: 40px;
+    height: 40px;
+    color: var(--text-tertiary, #9ca3af);
+    margin-bottom: 4px;
+}
+
+.deleted-events-empty p {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.deleted-events-empty span {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+/* --- Card (matches .schedule-card) --- */
+.de-card {
+    display: flex;
+    background: var(--bg-primary, white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.de-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateX(4px);
+}
+
+.de-card-busy {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Left status color bar. Colors mirror the Schedule tab exactly: same
+   --status-* variables (office palette) with the same hex fallbacks. */
+.de-card-status-bar {
+    width: 4px;
+    flex-shrink: 0;
+    background: var(--text-tertiary);
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.de-card.status-received .de-card-status-bar { background: var(--status-received, #2b5ea0); }
+.de-card.status-hold .de-card-status-bar { background: var(--status-hold, #f97316); }
+.de-card.status-referred .de-card-status-bar { background: var(--status-referred, #8b5cf6); }
+.de-card.status-fyied .de-card-status-bar { background: var(--status-fyied, #14b8a6); }
+.de-card.status-scheduling_in_progress .de-card-status-bar { background: var(--status-scheduling_in_progress, #14b8a6); }
+.de-card.status-scheduled .de-card-status-bar { background: var(--status-scheduled, #22c55e); }
+.de-card.status-rsvped .de-card-status-bar { background: var(--status-rsvped, #10b981); }
+.de-card.status-regrets_sent .de-card-status-bar { background: var(--status-regrets_sent, #ef4444); }
+.de-card.status-passed .de-card-status-bar { background: var(--status-passed, #6b7280); }
+.de-card.status-canceled .de-card-status-bar { background: var(--status-canceled, #ef4444); }
+.de-card.status-requires_hms_review .de-card-status-bar { background: var(--status-requires_hms_review, #eab308); }
+
+/* Body — text on the left, actions on the right */
+.de-card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.de-card-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.de-card-title {
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.de-card-org {
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.de-card-meta-line {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.de-card-sep {
+    color: var(--text-tertiary, #9ca3af);
+}
+
+/* Action buttons */
+.de-card-actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.de-card-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    border-radius: var(--radius-md, 6px);
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary, white);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.de-card-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.de-card-btn.de-restore:hover {
+    color: var(--status-scheduled, #22c55e);
+    border-color: var(--status-scheduled, #22c55e);
+    background: var(--status-scheduled-bg, rgba(34, 197, 94, 0.08));
+}
+
+.de-card-btn.de-delete:hover {
+    color: var(--status-canceled, #ef4444);
+    border-color: var(--status-canceled, #ef4444);
+    background: var(--status-canceled-bg, rgba(239, 68, 68, 0.08));
+}
+
+@media (max-width: 640px) {
+    .de-card-btn span,
+    .de-card-actions .de-card-btn {
+        font-size: var(--font-size-xs, 0.75rem);
+        padding: 5px 8px;
+    }
+}

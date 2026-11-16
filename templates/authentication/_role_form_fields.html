@@ -1,0 +1,43 @@
+{% comment %}
+Renders the editable fields for a Role (name, description, color, grouped
+permission checkboxes). Pass `role` (a Role instance, or None for create) and
+`permission_groups` (Permissions.PERMISSION_GROUPS).
+{% endcomment %}
+<div class="role-form-body">
+    <div class="form-row">
+        <label class="field-label" for="id_name_{{ role.id|default:'new' }}">Role name</label>
+        <input type="text" name="name" id="id_name_{{ role.id|default:'new' }}"
+               value="{{ role.name|default:'' }}" placeholder="e.g., Intern, Press Aide" required>
+    </div>
+
+    <div class="form-row">
+        <label class="field-label" for="id_description_{{ role.id|default:'new' }}">Description</label>
+        <textarea name="description" id="id_description_{{ role.id|default:'new' }}" rows="2"
+                  placeholder="What is this role for? (optional)">{{ role.description|default:'' }}</textarea>
+    </div>
+
+    <div class="form-row">
+        <label class="field-label" for="id_color_{{ role.id|default:'new' }}">Badge color</label>
+        <input type="color" name="color" id="id_color_{{ role.id|default:'new' }}"
+               value="{{ role.color|default:'#64748b' }}">
+    </div>
+
+    <div class="form-row">
+        <label class="field-label">Permissions</label>
+        {% for group in permission_groups %}
+        <div class="perm-group">
+            <div class="perm-group-title">{{ group.label }}</div>
+            {% for key, label, help in group.permissions %}
+            <label class="perm-option">
+                <input type="checkbox" name="permissions" value="{{ key }}"
+                       {% if key in role.permissions %}checked{% endif %}>
+                <span class="perm-option-text">
+                    <span class="perm-option-label">{{ label }}</span>
+                    <span class="perm-option-help">{{ help }}</span>
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</div>

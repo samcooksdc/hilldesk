@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}User Profile{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <h2>User Profile</h2>
+    
+    <div class="profile-info">
+        <h3>Account Information</h3>
+        <div class="info-group">
+            <p><strong>Username:</strong> {{ user.username }}</p>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Full Name:</strong> {{ user.get_full_name }}</p>
+            <p><strong>Role:</strong> {{ user.role }}</p>
+            <p><strong>Last Login:</strong> {{ user.last_login|date:"F j, Y, g:i a" }}</p>
+        </div>
+        
+        <h3>Preferences</h3>
+        <div class="info-group">
+            <p><strong>Theme:</strong> {{ user.get_theme_display }}</p>
+            <p><strong>Accent Color:</strong> {{ user.get_accent_color_display }}</p>
+            <p><strong>Default View:</strong> {{ user.get_default_view_display }}</p>
+        </div>
+        
+        <h3>Security</h3>
+        <div class="info-group">
+            <p><strong>MFA Enabled:</strong> {% if user.mfa_enabled %}Yes{% else %}No{% endif %}</p>
+            <p><strong>Last Password Change:</strong> {{ user.last_password_change|date:"F j, Y, g:i a" }}</p>
+        </div>
+    </div>
+    
+    <div class="profile-actions">
+        <a href="#" class="btn btn-primary">Edit Profile</a>
+        <a href="#" class="btn btn-secondary">Change Password</a>
+        {% if not user.mfa_enabled %}
+            <a href="#" class="btn btn-secondary">Enable MFA</a>
+        {% else %}
+            <a href="#" class="btn btn-warning">Disable MFA</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
