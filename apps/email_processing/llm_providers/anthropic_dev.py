@@ -117,7 +117,7 @@ class AnthropicDevProvider(BaseLLMProvider):
 
     def extract_candidates(self, bundle: MessageBundle) -> RawModelOutput:
         """
-        The single extraction call (spec §7) via the Anthropic API: one
+        The single extraction call via the Anthropic API: one
         messages.create with a FORCED tool-use definition built from the
         candidate-set schema. Same contract as the Bedrock provider.
         """

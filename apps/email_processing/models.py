@@ -837,7 +837,7 @@ class SenderReputation(models.Model):
 
 
 class ExtractionCandidate(models.Model):
-    """One extracted scheduling candidate — the unit handed downstream (spec §3.1).
+    """One extracted scheduling candidate — the unit handed downstream.
 
     One email → N candidate rows (multi-event fan-out, or ICS + body extraction
     on the same message). A candidate is never shown raw to reviewers; Phase 5
@@ -880,7 +880,7 @@ class ExtractionCandidate(models.Model):
     payload = models.JSONField(
         default=dict,
         help_text="Schema-validated candidate (event fields, contacts[], "
-                  "organizations[], verbatim, timezone — spec §7 shape)",
+                  "organizations[], verbatim, timezone)",
     )
     provenance = models.JSONField(
         default=dict, blank=True,

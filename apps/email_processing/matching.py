@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Candidate → existing-event matching (spec §8.4).
+"""Candidate → existing-event matching.
 
 Cheap and deterministic, in strict precedence order:
 
@@ -13,7 +13,7 @@ Fuzzy scoring uses ``difflib`` over a date-bounded window rather than pg_trgm:
 the ±1-day prefilter reduces the comparison set to a handful of rows, so a
 DB-agnostic in-Python ratio is sufficient and identical across
 SQLite/Postgres. (Bedrock KB semantic retrieval stays feature-flagged off
-until the KB exists — spec §8.4.)
+until the KB exists.)
 
 Only unambiguous matches are returned; multiple mid-band scores are
 *inconclusive* and reported as no-match with the scores recorded, because a

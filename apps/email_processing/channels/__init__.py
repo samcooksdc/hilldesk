@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Channel parsers (spec §6): non-prose routes into the pipeline.
+"""Channel parsers: non-prose routes into the pipeline.
 
 - ``ics``: calendar objects parse deterministically into candidates — no model
   call, confidence 1.0.

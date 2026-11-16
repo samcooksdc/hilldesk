@@ -6,9 +6,8 @@ app_name = 'email_processing'
 
 # NOTE (email ingestion migration): this app's URLs were disabled at the root
 # URLconf for some time; only the new ingestion-pipeline surfaces are routed.
-# The legacy inbox/verification views remain dark (their code is deleted in
-# Phase 5 of the ingestion build, replaced by the triage list — see
-# docs/EMAIL_INGESTION_BUILD_PLAN.md).
+# The legacy inbox/verification views were retired; the inbox and the
+# triage list replace them.
 urlpatterns = [
     # Divert-store browse (ingestion pipeline)
     path('diverted/', views.divert_store, name='divert_store'),

@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('intent', models.CharField(choices=[('NEW_EVENT', 'New event'), ('RECURRING_EVENT', 'Recurring event'), ('RESCHEDULE', 'Reschedule'), ('CANCELLATION', 'Cancellation'), ('UNCERTAIN', 'Uncertain')], max_length=20)),
-                ('payload', models.JSONField(default=dict, help_text='Schema-validated candidate (event fields, contacts[], organizations[], verbatim, timezone — spec §7 shape)')),
+                ('payload', models.JSONField(default=dict, help_text='Schema-validated candidate (event fields, contacts[], organizations[], verbatim, timezone)')),
                 ('provenance', models.JSONField(blank=True, default=dict, help_text='Source channel (body|ics|attachment:<name>|forward-quoted), spans, verbatim strings, timezone basis, ICS UID/method')),
                 ('confidence', models.FloatField(default=0.0, validators=[django.core.validators.MinValueValidator(0.0), django.core.validators.MaxValueValidator(1.0)])),
                 ('recurrence_rule', models.CharField(blank=True, help_text='RFC-5545 RRULE string (never expanded instances)', max_length=500, null=True)),

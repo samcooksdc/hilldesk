@@ -2,7 +2,7 @@
 """Funnel engine: orders the stages, applies short-circuit semantics, and
 writes one FilterLog row per stage evaluated.
 
-Order (spec §5): scope → headers → reputation → dedup → rate gate → content.
+Order: scope → headers → reputation → dedup → rate gate → content.
 Channel bypasses: a calendar part or document attachments skip content scoring
 (those channels are deterministic / force pass-forward); an allowlisted sender
 skips content scoring and content-hash dedup.

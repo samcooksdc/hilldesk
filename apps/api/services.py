@@ -45,7 +45,7 @@ class SmartExtractService:
         """
         Generate AI suggestions for event fields based on email content.
 
-        Reimplemented on the single extraction call (spec §7): the event's
+        Reimplemented on the single extraction call: the event's
         primary linked email is bundled and sent through
         ``provider.extract_candidates``; the strongest candidate's event fields
         become field-level suggestions where they differ from the event.
@@ -757,8 +757,8 @@ class FieldReviewService:
             "review_decision": event.review_decision
         }
         if junk:
-            # Junk-dismiss counts against the sender and offers blocklisting
-            # (ingestion spec §10.7); the actual block is a separate action.
+            # Junk-dismiss counts against the sender and offers blocklisting;
+            # the actual block is a separate action.
             rep = self._bump_sender_reputation(event, accepted=False, user=user)
             if rep is not None and rep.list != 'block':
                 result["offer_block_sender"] = True
@@ -925,7 +925,7 @@ class FieldReviewService:
         event.modified_by = user
         event.save()
 
-        # Reputation feedback (ingestion spec §10.7): a completed review of an
+        # Reputation feedback: a completed review of an
         # ingestion-created event silently vouches for the sender.
         self._bump_sender_reputation(event, accepted=True, user=user)
 

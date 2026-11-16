@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The named dangerous interaction (design spec §5 / implementation spec §12.2):
+"""The named dangerous interaction:
 
 Dedup must catch redelivered/resent messages WITHOUT ever eating a short
 reschedule reply that quotes a long thread. If quoted-history stripping and

@@ -80,4 +80,3 @@ hilldesk/
 
 ## Documentation
 - **Architecture**: `docs/architecture.md` — stack, layout, pipeline, security model, deployment shape
-- **Design history**: `docs/` and `docs/kiro/specs/`

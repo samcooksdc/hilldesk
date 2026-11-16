@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Divert re-scoring (spec §5, weekly beat).
+"""Divert re-scoring (weekly beat).
 
 Divert-store safety must not depend on a human scanning it: this task re-runs
 Stage 4 (current anchor dictionary + current reputation) over recently diverted

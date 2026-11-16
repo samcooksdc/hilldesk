@@ -4792,14 +4792,14 @@ def _safe_stored_name(original_name, version_id):
     return f'{version_id}{ext}'
 
 # =============================================================================
-# Email ingestion review surfaces (spec §10)
+# Email ingestion review surfaces
 # =============================================================================
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def change_suggestions_feed(request):
     """
-    The inbox's third feed (ingestion spec §10.2): pending change suggestions
+    The inbox's third feed: pending change suggestions
     grouped per source candidate, so a multi-field reschedule renders as ONE
     card with a field-level diff.
 
@@ -5015,7 +5015,7 @@ def event_series(request, event_id):
 @permission_classes([permissions.IsAuthenticated])
 def activate_event_series(request, series_id):
     """
-    Reviewer confirms a recurring candidate's rule (ingestion spec §9): the
+    Reviewer confirms a recurring candidate's rule: the
     series activates and materializes occurrences ONLY when an end bound
     (until_date or count) is present — no open-ended series, enforced here and
     at the model level.
@@ -5079,7 +5079,7 @@ def activate_event_series(request, series_id):
 def block_sender(request):
     """
     Blocklist a sender (the accept side increments reputation silently; this
-    is the junk-dismiss "block this sender" action — ingestion spec §10.7).
+    is the junk-dismiss "block this sender" action).
 
     POST body:
     - sender_email: address to block (required)

@@ -1284,7 +1284,7 @@ class InboxRedesign {
             }
         }
 
-        // Email-ingestion meta chips (additive; ingestion spec §10.3): intent,
+        // Email-ingestion meta chips (additive): intent,
         // possible-duplicate warning, channel, and pending-series indicator.
         let ingestionChips = '';
         const efMeta = event.extracted_fields && event.extracted_fields.meta;

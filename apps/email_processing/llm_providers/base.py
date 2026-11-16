@@ -2,7 +2,7 @@
 """
 Base LLM Provider Interface.
 
-One structured extraction call per message (spec §7) — the old
+One structured extraction call per message — the old
 classify→extract pair is gone; the deterministic funnel replaced
 classification. Providers also generate email drafts (unchanged surface used
 by draft_generation_service).

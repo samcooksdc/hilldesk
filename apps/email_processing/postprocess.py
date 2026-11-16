@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Post-processing & materialization (spec §8): deterministic, no model call.
+"""Post-processing & materialization: deterministic, no model call.
 
 Turns validated ExtractionCandidate rows into the review surfaces the current
 inbox already renders:
@@ -225,7 +225,7 @@ def _materialize_draft_event(candidate: ExtractionCandidate,
 
 def _materialize_series(candidate: ExtractionCandidate, draft_event, actor):
     """Pending, INACTIVE series — activation requires a reviewer-confirmed end
-    bound (spec §9)."""
+    bound."""
     from apps.event_management.models import EventSeries
 
     rrule = candidate.recurrence_rule or 'FREQ=WEEKLY'
@@ -313,7 +313,7 @@ def _materialize_change_suggestions(candidate: ExtractionCandidate,
 
 
 # ---------------------------------------------------------------------------
-# Enumerated-recurrence fold (spec §8.3)
+# Enumerated-recurrence fold
 # ---------------------------------------------------------------------------
 
 def _detect_cadence(dates: List[date]) -> Optional[str]:
@@ -469,7 +469,7 @@ def process_candidates(record: EmailProcessing) -> Dict[str, Any]:
                 # Not primary — the matched event may already have one.
                 _attach_sources(matched, record, actor, is_primary=False)
             else:
-                # Never guess which event to change (spec §8.5).
+                # Never guess which event to change.
                 cand.status = 'escalated'
                 summary['escalated'] += 1
                 security_logger.warning(

@@ -165,7 +165,7 @@ class BedrockProvider(BaseLLMProvider):
 
     def extract_candidates(self, bundle: MessageBundle) -> RawModelOutput:
         """
-        The single extraction call (spec §7): one invoke_model with a FORCED
+        The single extraction call: one invoke_model with a FORCED
         tool-use definition built from the candidate-set schema, so the model
         can only answer through the schema. Images / scan-only PDFs ride along
         as content blocks — OCR stays inside this one call.

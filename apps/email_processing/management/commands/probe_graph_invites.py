@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Spike (spec §4.2): verify how Outlook meeting invites arrive for a mailbox.
+"""Spike: verify how Outlook meeting invites arrive for a mailbox.
 
 Answers, against the real tenant, the question the ICS channel depends on:
 do invites show up as ``message`` resources with ``meetingMessageType`` set
@@ -92,6 +92,5 @@ class Command(BaseCommand):
         else:
             self.stdout.write(
                 'Decision input: if calendar payload was NO for invites above, the '
-                'ICS channel needs an /events subscription resource (spec §4.2) — '
-                'record the answer in docs/EMAIL_INGESTION_BUILD_PLAN.md.'
+                'ICS channel needs an /events subscription resource.'
             )

@@ -2,7 +2,7 @@
 """Calendar-object channel: deterministic candidate extraction from ICS data.
 
 A calendar part is machine-readable truth — no language model involved, every
-candidate carries confidence 1.0. Mapping (spec §6.1):
+candidate carries confidence 1.0. Mapping:
 
 - ``METHOD:REQUEST``            → NEW_EVENT (RECURRING_EVENT when an RRULE is present)
 - ``METHOD:CANCEL``             → CANCELLATION

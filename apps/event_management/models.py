@@ -2228,7 +2228,7 @@ class EventAttachmentVersion(models.Model):
 
 class EventSeries(models.Model):
     """A recurring event rule whose occurrences are materialized as ordinary
-    Event rows (spec §3.3).
+    Event rows.
 
     Consequences, all intentional: calendar/schedule/conflict views need zero
     changes; single-occurrence edits are ordinary event edits (flagged

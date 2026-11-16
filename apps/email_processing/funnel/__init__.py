@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Deterministic ingestion funnel (spec §5).
+"""Deterministic ingestion funnel.
 
 One module per stage — pure functions over a FunnelContext — orchestrated by
 ``engine.run_funnel``, which writes a FilterLog row for every stage evaluated.

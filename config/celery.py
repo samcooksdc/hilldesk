@@ -35,7 +35,7 @@ app.conf.beat_schedule = {
         'schedule': 900.0,
     },
     # Roll active event-series occurrence horizons forward (materialization is
-    # idempotent; monthly cadence per the ingestion spec §3.3).
+    # idempotent; monthly cadence).
     'extend-series-horizon': {
         'task': 'apps.event_management.tasks.extend_series_horizon',
         'schedule': 30 * 24 * 3600.0,

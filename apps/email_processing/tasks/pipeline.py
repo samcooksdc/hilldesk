@@ -8,8 +8,8 @@ task runs the deterministic funnel; outcomes:
                  query, not a table).
 - ``escalate`` → an ``EmailProcessing`` row with status ``escalated`` so triage
                  can surface it (rate-gate bursts fold into one triage item).
-- ``extract``  → an ``EmailProcessing`` row, then the SINGLE extraction call
-                 (spec §7): deterministic ICS candidates first; one model call
+- ``extract``  → an ``EmailProcessing`` row, then the SINGLE extraction
+                 call: deterministic ICS candidates first; one model call
                  (schema-validated, one repair retry, escalate on persistent
                  failure) unless the calendar part covers the message; results
                  persisted as ExtractionCandidate rows for Phase-5
@@ -112,7 +112,7 @@ def _log_extraction(raw: RawMessage, outcome: str, signals: dict) -> None:
 def _escalate_extraction(raw: RawMessage, record: EmailProcessing,
                          reason: str, detail: str = '') -> str:
     """Extraction could not produce trustworthy candidates → human triage.
-    Never act on free text (spec §6.4 trust boundary)."""
+    Never act on free text (trust boundary)."""
     record.status = 'escalated'
     record.set_extracted_field('escalation', {'reason': reason, 'detail': detail[:500]})
     record.save()
@@ -231,7 +231,7 @@ def _run_extraction(raw: RawMessage, ctx, record: EmailProcessing) -> str:
         'model_called': needs_model,
     })
 
-    # Post-processing & materialization (spec §8): candidates become the
+    # Post-processing & materialization: candidates become the
     # review surfaces the inbox renders (draft Events / change suggestions).
     from ..postprocess import process_candidates
     result = process_candidates(record)

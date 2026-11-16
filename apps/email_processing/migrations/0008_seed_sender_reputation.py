@@ -1,4 +1,4 @@
-"""Seed the sender-reputation allowlist (spec §3.1 / build plan Phase 2).
+"""Seed the sender-reputation allowlist.
 
 Two seed sources, both idempotent:
 - Internal domains: domains of SCHEDULING_MAILBOXES plus INTERNAL_EMAIL_DOMAINS

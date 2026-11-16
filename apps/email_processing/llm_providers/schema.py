@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The single extraction call's contract (spec §7). SINGLE SOURCE OF TRUTH.
+"""The single extraction call's contract. SINGLE SOURCE OF TRUTH.
 
 Every provider returns data that must validate against CANDIDATE_SET_SCHEMA
 before anything downstream touches it. The trust boundary is here: model

@@ -199,7 +199,7 @@ def link_extraction_to_event(event, extracted_data, user=None):
 # The functions above handle the legacy single-POC / single-group path. The
 # functions below resolve an arbitrary number of extracted parties/orgs against
 # the directory, supporting the three reviewer actions: create new, link
-# unchanged, or link-and-update. See docs/EXTRACTION_REVIEW_CONTACTS_OVERHAUL.md.
+# unchanged, or link-and-update.
 # ===========================================================================
 
 # Honorifics / suffixes dropped before comparing names so "Dr. Alan Foster"

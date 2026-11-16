@@ -2,7 +2,7 @@
 """
 Mock LLM Provider for offline development.
 
-Implements ``extract_candidates`` (spec §7) with DETERMINISTIC candidate sets
+Implements ``extract_candidates`` with DETERMINISTIC candidate sets
 keyed off content markers, so tests and demo scripts exercise the multi-event,
 recurrence, reschedule, and cancellation paths with no network and no API key.
 

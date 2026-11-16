@@ -20,7 +20,7 @@ from apps.authentication.permissions import Permissions
 # (email_verification_list, verify_email, reject_email, reprocess_email,
 # verification_dashboard, update_field_confidence) were retired in Phase 5 —
 # the inbox is the review surface and the triage list (below) replaces the
-# escalation queue. See docs/EMAIL_INGESTION_BUILD_PLAN.md.
+# escalation queue.
 
 
 @login_required
@@ -289,7 +289,7 @@ def _diverted_queryset(query=''):
 
 @login_required
 def diverted_items_api(request):
-    """JSON feed for the inbox's "Diverted" tab (spec §10.6).
+    """JSON feed for the inbox's "Diverted" tab.
 
     Guarantees the office can always find a message it received, even one the
     funnel filtered out. ?search= narrows by subject (or exact sender address).
