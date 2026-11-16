@@ -112,5 +112,7 @@ the conventions they follow.
 
 ## License
 
-[Apache 2.0](LICENSE). "HillDesk" and the HD logo are trademarks; see
-[NOTICE](NOTICE).
+[Apache 2.0](LICENSE). "HillDesk" and the HD logo are trademarks. An office
+can run HillDesk for its own staff under the HillDesk name, with or without
+changes; a modified version distributed or offered to others needs its own
+name. See [NOTICE](NOTICE).
