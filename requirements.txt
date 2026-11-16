@@ -65,7 +65,7 @@ msal>=1.26.0                # Microsoft Authentication Library
 # -----------------------------------------------------------------------------
 icalendar>=5.0.0            # Deterministic calendar-object (.ics) parsing
 pypdf>=4.0.0                # PDF attachment text harvest
-python-docx>=1.1.0          # Word attachment text harvest (also via docxtpl)
+python-docx>=1.2.0          # Word attachment text harvest (also via docxtpl)
 jsonschema>=4.20.0          # Extraction schema validation (single-call contract)
 
 # -----------------------------------------------------------------------------
